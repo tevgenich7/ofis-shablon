@@ -9,7 +9,7 @@
 # память сотрудников, журналы и разговоры остаются как есть.
 set -e
 KOREN="$(cd "$(dirname "$0")/.." && pwd)"
-REPO="${OFIS_REPO:-https://github.com/tevgenich7/ofis-anna.git}"
+REPO="${OFIS_REPO:-https://github.com/tevgenich7/ofis-shablon.git}"
 
 # ── что считается служебным (обновляется) ────────────────────────────────────
 SLUZHEBNOE=(
@@ -23,31 +23,16 @@ LICHNOE_VNUTRI=("memory.md")
 
 soobshit() { printf '%s\n' "$1"; }
 
-# ── пропуск ──────────────────────────────────────────────────────────────────
-TOKEN=""
-[ -f "$KOREN/.env" ] && TOKEN="$(grep -m1 '^OFIS_UPDATE_TOKEN=' "$KOREN/.env" 2>/dev/null | cut -d= -f2- | tr -d ' "'"'"'')"
-if [ -z "$TOKEN" ]; then
-  soobshit ""
-  soobshit "  Нет пропуска для обновлений."
-  soobshit ""
-  soobshit "  Обновления лежат в закрытом хранилище, для чтения нужен пропуск."
-  soobshit "  Попроси его у того, кто ставил офис, и запиши командой:"
-  soobshit "      bash scripts/klyuch.sh OFIS_UPDATE_TOKEN"
-  soobshit ""
-  exit 1
-fi
-
 # ── забираем свежую версию во временную папку ────────────────────────────────
 VREMENNAYA="$(mktemp -d)"
 trap 'rm -rf "$VREMENNAYA"' EXIT
-ADRES="$(printf '%s' "$REPO" | sed "s#https://#https://x-access-token:${TOKEN}@#")"
 
 soobshit ""
 soobshit "  Смотрю, что нового…"
-if ! git clone --quiet --depth 1 "$ADRES" "$VREMENNAYA/svezhee" 2>/dev/null; then
+if ! git clone --quiet --depth 1 "$REPO" "$VREMENNAYA/svezhee" 2>/dev/null; then
   soobshit ""
   soobshit "  Не получилось забрать обновления."
-  soobshit "  Причины бывают две: пропуск устарел или нет интернета."
+  soobshit "  Скорее всего нет интернета - проверь связь и попробуй ещё раз."
   soobshit ""
   exit 1
 fi
