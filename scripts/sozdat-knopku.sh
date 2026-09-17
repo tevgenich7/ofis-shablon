@@ -37,7 +37,12 @@ if curl -s -o /dev/null --max-time 1 http://localhost:4477 2>/dev/null; then
 fi
 export PATH="/opt/homebrew/bin:/usr/local/bin:\$HOME/.local/bin:\$PATH"
 cd "$KOREN"
-exec node panel/server.js >> "$KOREN/panel/zhurnal.log" 2>&1
+# Сервер запускаем ОТДЕЛЬНО и сразу выходим. Если сделать exec, то офисом станет сам
+# node - а macOS ждёт от приложения отклика по своим каналам, не получает его и пишет
+# «программа не отвечает». Плюс значок при этом долго думает, пока система ждёт ответа.
+nohup node panel/server.js >> "$KOREN/panel/zhurnal.log" 2>&1 &
+disown 2>/dev/null || true
+exit 0
 LAUNCH
 
 chmod +x "$APP/Contents/MacOS/zapusk"
