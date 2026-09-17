@@ -1,0 +1,32 @@
+# ключи и секреты
+.env
+.env.*
+*.pem
+secrets*
+credentials*
+
+# журналы и временное
+panel/zhurnal.log
+*.log
+__pycache__/
+.DS_Store
+
+# видео и звук: тяжёлые, в репо не едут (лежат в inbox/ и knowledge/raw/video/)
+*.mp4
+*.mov
+*.mkv
+*.m4a
+*.mp3
+*.wav
+*.ogg
+
+# бот: состояние разговора и скачанные голосовые
+scripts/tg/sostoyanie.json
+inbox/golosovye/
+
+# гугл: ключи доступа и собранное окружение
+.mcp-sheets/
+scripts/gugl/venv/
+
+# скачанное со стоков - это чужие файлы, в репо им не место
+inbox/stoki/

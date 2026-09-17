@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Офис</title>
+<style>
+  :root{
+    --fon:#0e0d12; --karta:#17161d; --karta2:#1e1c26; --linia:#2b2833;
+    --tekst:#ece9f2; --tusklo:#9a94a8; --akcent:#c9a4ff; --akcent2:#7de2c3;
+    --radius:16px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --fon:#f7f5fa; --karta:#fff; --karta2:#f1eef7; --linia:#e4dfec;
+           --tekst:#1b1922; --tusklo:#6d6779; --akcent:#7b3ff2; --akcent2:#149c78; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fon);color:var(--tekst);height:100vh;overflow:hidden}
+  .setka{display:grid;grid-template-columns:246px 1fr 300px;height:100vh;min-height:0}
+  .setka>*{min-height:0;min-width:0}
+  @media (max-width:1000px){ .setka{grid-template-columns:1fr} .bok,.prav{display:none} }
+
+  /* левая колонка - дела */
+  .bok{background:var(--karta);border-right:1px solid var(--linia);padding:18px 14px;overflow-y:auto}
+  .logo{font-weight:700;font-size:17px;margin:2px 4px 18px;display:flex;align-items:center;gap:8px}
+  .logo b{color:var(--akcent)}
+  .grupa{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--tusklo);margin:16px 6px 7px}
+  .delo{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:transparent;border:0;color:var(--tekst);
+        padding:9px 10px;border-radius:11px;cursor:pointer;font:inherit;transition:background .12s}
+  .delo:hover{background:var(--karta2)}
+  .delo .zn{width:22px;text-align:center;font-size:15px;opacity:.9}
+
+  /* центр - разговор */
+  .centr{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+  .shapka{flex-shrink:0;padding:14px 22px;border-bottom:1px solid var(--linia);display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .shapka h1{font-size:15px;margin:0;font-weight:600}
+  .shapka .sostoyanie{font-size:12.5px;color:var(--tusklo)}
+  .knopka-tihaya{background:var(--karta2);border:1px solid var(--linia);color:var(--tusklo);border-radius:9px;padding:6px 11px;font:inherit;font-size:12.5px;cursor:pointer}
+  .knopka-tihaya:hover{color:var(--tekst)}
+
+  .lenta{flex:1;overflow-y:auto;padding:22px 22px 8px;display:flex;flex-direction:column;gap:14px}
+  .soob{max-width:720px;padding:13px 16px;border-radius:var(--radius);white-space:pre-wrap;word-wrap:break-word}
+  .ot-menya{align-self:flex-end;background:var(--akcent);color:#12101a;border-bottom-right-radius:5px}
+  @media (prefers-color-scheme: dark){ .ot-menya{color:#12101a} }
+  .ot-ofisa{align-self:flex-start;background:var(--karta);border:1px solid var(--linia);border-bottom-left-radius:5px}
+  .rabota{align-self:flex-start;font-size:12.5px;color:var(--tusklo);padding:2px 6px;display:flex;gap:7px;align-items:center}
+  .tochki{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--akcent2);animation:puls 1.1s infinite}
+  @keyframes puls{0%,100%{opacity:.25}50%{opacity:1}}
+
+  /* приветственный экран */
+  .privet{margin:auto;text-align:center;max-width:520px;padding:30px}
+  .privet h2{font-size:21px;margin:0 0 8px}
+  .privet p{color:var(--tusklo);margin:0 0 22px}
+  .plitki{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .plitka{background:var(--karta);border:1px solid var(--linia);border-radius:13px;padding:14px;cursor:pointer;text-align:left;color:var(--tekst);font:inherit}
+  .plitka:hover{border-color:var(--akcent)}
+  .plitka b{display:block;margin-bottom:3px;font-size:14px}
+  .plitka span{font-size:12.5px;color:var(--tusklo)}
+
+  /* ввод */
+  .nizh{padding:12px 22px 20px;border-top:1px solid var(--linia)}
+  .pole{flex-shrink:0;display:flex;gap:9px;align-items:flex-end;background:var(--karta);border:1px solid var(--linia);border-radius:14px;padding:9px 10px 9px 15px}
+  .pole:focus-within{border-color:var(--akcent)}
+  textarea{flex:1;background:transparent;border:0;color:var(--tekst);font:inherit;resize:none;max-height:170px;outline:none;padding:4px 0}
+  .otpravit{background:var(--akcent);border:0;color:#12101a;width:34px;height:34px;border-radius:10px;cursor:pointer;font-size:16px;flex-shrink:0}
+  .otpravit:disabled{opacity:.4;cursor:default}
+
+  /* правая колонка - планёрка и готовое */
+  .prav{background:var(--karta);border-left:1px solid var(--linia);padding:18px 15px;overflow-y:auto}
+  .blok{margin-bottom:22px}
+  .blok h3{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--tusklo);margin:0 0 9px}
+  .plan-stroka{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--linia);align-items:flex-start}
+  .plan-stroka:last-child{border:0}
+  .fajl{display:block;font-size:13px;padding:7px 9px;border-radius:9px;color:var(--tekst);text-decoration:none;background:var(--karta2);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fajl:hover{outline:1px solid var(--akcent)}
+  .pusto{font-size:12.5px;color:var(--tusklo)}
+
+  /* сообщение о поломке - человеческим языком */
+  .beda{align-self:flex-start;max-width:720px;background:var(--karta);border:1px solid var(--akcent);border-radius:var(--radius);padding:15px 17px}
+  .beda b{display:block;margin-bottom:6px}
+  /* вкладки разговоров */
+  .vkladki{flex-shrink:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:12px 22px 4px}
+  .vkl{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:9px;background:var(--karta2);color:var(--tekst);font-size:13px;cursor:pointer;border:1px solid var(--linia)}
+  .vkl.aktiv{background:var(--akcent);color:#fff;border-color:transparent}
+  .vkl .krest{opacity:.45;font-size:12px}
+  .vkl .krest:hover{opacity:1}
+  .vkl-plus{padding:5px 10px;border-radius:9px;background:var(--karta2);color:var(--tekst);border:1px solid var(--linia);font-size:13px;cursor:pointer;opacity:.85}
+  /* витрина с превью */
+  .karta{display:block;margin-bottom:10px;border-radius:10px;overflow:hidden;background:var(--karta2);border:1px solid var(--linia);color:var(--tekst)}
+  .karta img,.karta video{display:block;width:100%;height:auto;max-height:190px;object-fit:cover;background:var(--karta)}
+  .karta .niz{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;font-size:12px}
+  .karta .niz b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .v-papke{opacity:.6;cursor:pointer;white-space:nowrap}
+  .v-papke:hover{opacity:1}
+  /* установка */
+  .ustan{flex-shrink:0;margin:8px 22px 4px;padding:14px 16px;border:1px solid var(--linia);border-radius:14px;background:var(--karta2)}
+  .ustan h3{margin:0 0 3px;font-size:15px}
+  .ustan .pod{opacity:.6;font-size:13px;margin-bottom:11px}
+  .shagi{display:flex;flex-wrap:wrap;gap:7px}
+  .shag{display:flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:var(--karta);border:1px solid var(--linia);color:var(--tekst);font-size:13px;opacity:.55}
+  .shag.gotov{opacity:.85}
+  .shag.seychas{opacity:1;background:var(--akcent);color:#fff;border-color:transparent}
+  .podkl-stroka{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px;line-height:1.35}
+  .podkl-stroka .zachem{display:block;opacity:.5;font-size:12px}
+  .bok.zanyata .delo{opacity:.35;pointer-events:none}
+  .beda ol{margin:9px 0 0;padding-left:19px}
+  .beda li{margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="setka">
+
+  <aside class="bok">
+    <div class="logo">✦ <b>Офис</b></div>
+
+    <div class="grupa">Сделать</div>
+    <button class="delo" data-skazat="Хочу снять рилс. Задай мне вопросы и напиши сценарий."><span class="zn">🎬</span> Сценарий ролика</button>
+    <button class="delo" data-skazat="Смонтируй ролик из того, что я снял. Спроси, где лежат файлы."><span class="zn">✂️</span> Смонтировать</button>
+    <button class="delo" data-skazat="Сделай карусель для инстаграма. Спроси тему и что показать на слайдах."><span class="zn">🖼</span> Карусель</button>
+    <button class="delo" data-skazat="Напиши текст поста моим голосом. Спроси, о чём."><span class="zn">✍️</span> Текст поста</button>
+
+    <div class="grupa">Понять</div>
+    <button class="delo" data-skazat="Собери контент-стратегию на ближайший месяц: какие ролики, какие карусели, какие темы."><span class="zn">🧭</span> Контент-стратегия</button>
+    <button class="delo" data-skazat="Что выкладывали конкуренты за последние дни? Покажи, что у них зашло."><span class="zn">🔍</span> Что у конкурентов</button>
+    <button class="delo" data-skazat="Разбери мою аудиторию: кто это, что им нужно, что они покупают."><span class="zn">👥</span> Разбор аудитории</button>
+    <button class="delo" data-skazat="Покажи, что уже собрано в базе знаний: конкуренты, разборы, что у меня заходило."><span class="zn">📚</span> База знаний</button>
+
+    <div class="grupa">Порядок</div>
+    <button class="delo" data-skazat="Покажи контент-план: что готово, что в работе, что уже выложено."><span class="zn">✅</span> Контент-план</button>
+    <button class="delo" data-skazat="Наведи порядок в файлах офиса: убери лишнее, разложи по местам."><span class="zn">🧹</span> Прибраться</button>
+    <button class="delo" data-skazat="Я не понимаю, что происходит. Объясни простыми словами и скажи, что делать."><span class="zn">💡</span> Не понимаю</button>
+  </aside>
+
+  <main class="centr">
+    <div class="shapka">
+      <h1>Разговор с офисом</h1>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="sostoyanie" id="sostoyanie">офис на месте</span>
+        <button class="knopka-tihaya" id="zanovo">начать заново</button>
+      </div>
+    </div>
+
+    <div class="vkladki" id="vkladki"></div>
+
+    <div class="ustan" id="ustan" style="display:none">
+      <h3>Настраиваем офис</h3>
+      <div class="pod">Это один раз, около двадцати минут. Технарь рядом и ведёт по шагам.</div>
+      <div class="shagi" id="shagi"></div>
+    </div>
+
+    <div class="lenta" id="lenta">
+      <div class="privet" id="privet">
+        <h2>Доброе утро</h2>
+        <p>Скажи, что нужно сделать. Или нажми одно из дел слева.</p>
+        <div class="plitki">
+          <button class="plitka" data-skazat="Что мне снять сегодня? Предложи 3 идеи под мою аудиторию и объясни, почему они."><b>Что снять сегодня</b><span>3 идеи под твою аудиторию</span></button>
+          <button class="plitka" data-skazat="Проведи утреннюю планёрку: что нового у конкурентов, что в очереди, что выкладываем сегодня."><b>Утренняя планёрка</b><span>что нового и что делаем</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="nizh">
+      <div class="pole">
+        <textarea id="vvod" rows="1" placeholder="Напиши, что нужно…"></textarea>
+        <button class="otpravit" id="otpravit">↑</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="prav">
+    <div class="blok">
+      <h3>Сегодня</h3>
+      <div id="plan"><div class="pusto">Контент-план пока пустой. Скажи «собери контент-план» - и он появится.</div></div>
+    </div>
+    <div class="blok" id="podkl-blok" style="display:none">
+      <h3>Что подключено</h3>
+      <div id="podkl"></div>
+    </div>
+    <div class="blok" id="vitrina"></div>
+  </aside>
+
+</div>
+
+<script>
+const lenta = document.getElementById('lenta')
+const vvod = document.getElementById('vvod')
+const knopka = document.getElementById('otpravit')
+const sostoyanie = document.getElementById('sostoyanie')
+let tekushiyOtvet = null
+let razgovor = null      // id открытой вкладки
+let potok = null
+
+// ── лента ────────────────────────────────────────────────────────────────────
+function ubratPrivet(){ const p = document.getElementById('privet'); if (p) p.remove() }
+function vniz(){ lenta.scrollTop = lenta.scrollHeight }
+
+function dobavit(klass, text){
+  ubratPrivet()
+  const d = document.createElement('div')
+  d.className = 'soob ' + klass
+  d.textContent = text
+  lenta.appendChild(d); vniz(); return d
+}
+
+function pokazatRabotu(text){
+  ubratPrivet()
+  const d = document.createElement('div')
+  d.className = 'rabota'
+  d.innerHTML = '<span class="tochki"></span><span></span>'
+  d.lastChild.textContent = text
+  lenta.appendChild(d); vniz()
+  setTimeout(() => d.remove(), 9000)
+}
+
+function pokazatBedu(b){
+  ubratPrivet()
+  const d = document.createElement('div')
+  d.className = 'beda'
+  const zag = document.createElement('b'); zag.textContent = b.zagolovok
+  const opis = document.createElement('div'); opis.textContent = b.chto
+  d.append(zag, opis)
+  if (b.shagi?.length){
+    const ol = document.createElement('ol')
+    for (const s of b.shagi){ const li = document.createElement('li'); li.textContent = s; ol.appendChild(li) }
+    d.appendChild(ol)
+  }
+  lenta.appendChild(d); vniz()
+}
+
+// ── вкладки ──────────────────────────────────────────────────────────────────
+// Каждая вкладка - отдельный разговор со своей памятью. Длинная задача не тянет
+// контекст в следующую: и офис не путается, и лимиты целее.
+async function narisovatVkladki(spisok){
+  const gde = document.getElementById('vkladki')
+  gde.innerHTML = ''
+  for (const r of spisok){
+    const d = document.createElement('div')
+    d.className = 'vkl' + (r.id === razgovor ? ' aktiv' : '')
+    const t = document.createElement('span'); t.textContent = r.imya
+    d.appendChild(t)
+    if (spisok.length > 1){
+      const x = document.createElement('span'); x.className = 'krest'; x.textContent = '✕'
+      x.onclick = async (e) => {
+        e.stopPropagation()
+        await fetch('/api/zakryt', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: r.id }) })
+        if (r.id === razgovor){ const ost = spisok.filter(x2 => x2.id !== r.id); if (ost[0]) otkryt(ost[0].id) }
+      }
+      d.appendChild(x)
+    }
+    d.onclick = () => { if (r.id !== razgovor) otkryt(r.id) }
+    gde.appendChild(d)
+  }
+  const plus = document.createElement('div')
+  plus.className = 'vkl-plus'; plus.textContent = '+ новая задача'
+  plus.title = 'Отдельный разговор с чистой памятью'
+  plus.onclick = async () => {
+    const r = await (await fetch('/api/novyj', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) })).json()
+    otkryt(r.id)
+  }
+  gde.appendChild(plus)
+}
+
+function otkryt(id){
+  razgovor = id
+  lenta.innerHTML = ''
+  if (potok) potok.close()
+  podklyuchitsya()
+}
+
+// ── отправка ─────────────────────────────────────────────────────────────────
+async function skazat(text){
+  if (!text.trim() || !razgovor) return
+  dobavit('ot-menya', text)
+  vvod.value = ''; vvod.style.height = 'auto'
+  sostoyanie.textContent = 'офис думает…'
+  tekushiyOtvet = null
+  await fetch('/api/skazat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, razgovor }) })
+}
+
+knopka.onclick = () => skazat(vvod.value)
+vvod.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); skazat(vvod.value) }
+})
+vvod.addEventListener('input', () => { vvod.style.height = 'auto'; vvod.style.height = Math.min(vvod.scrollHeight, 170) + 'px' })
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-skazat]')
+  if (k) skazat(k.dataset.skazat)
+})
+document.getElementById('zanovo').onclick = async () => {
+  await fetch('/api/zanovo', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ razgovor }) })
+  lenta.innerHTML = ''
+  dobavit('ot-ofisa', 'Начали с чистого листа. Что делаем?')
+}
+
+// ── поток от офиса ───────────────────────────────────────────────────────────
+function podklyuchitsya(){
+  potok = new EventSource('/api/potok' + (razgovor ? '?razgovor=' + razgovor : ''))
+
+  potok.addEventListener('ya', (e) => { razgovor = JSON.parse(e.data).id })
+
+  potok.addEventListener('istoriya', (e) => {
+    const { soobsheniya } = JSON.parse(e.data)
+    for (const s of soobsheniya) dobavit(s.kto === 'ya' ? 'ot-menya' : 'ot-ofisa', s.text)
+  })
+
+  potok.addEventListener('vkladki', (e) => narisovatVkladki(JSON.parse(e.data).razgovory))
+
+  potok.addEventListener('kusok', (e) => {
+    const { text } = JSON.parse(e.data)
+    if (!tekushiyOtvet) tekushiyOtvet = dobavit('ot-ofisa', '')
+    tekushiyOtvet.textContent += text
+    vniz()
+  })
+  potok.addEventListener('otvet', (e) => {
+    const { text } = JSON.parse(e.data)
+    if (tekushiyOtvet) { tekushiyOtvet = null; return }
+    dobavit('ot-ofisa', text)
+  })
+  potok.addEventListener('rabota', (e) => pokazatRabotu(JSON.parse(e.data).chto))
+  potok.addEventListener('dumayu', () => { sostoyanie.textContent = 'офис думает…' })
+  potok.addEventListener('gotovo', (e) => {
+    sostoyanie.textContent = 'офис на месте'; tekushiyOtvet = null
+    let d = {}
+    try { d = JSON.parse(e.data) || {} } catch {}
+    if (!d.oshibka) return
+    // ошибка не должна проходить молча: человек видит, что случилось, и знает, кого звать
+    const kratko = String(d.prichina || '').replace(/\s+/g, ' ').trim().slice(0, 300)
+    dobavit('ot-ofisa', 'Офис споткнулся, вот что случилось: ' + (kratko || 'ответ не дошёл до конца')
+      + '. Попробуй ещё раз или напиши «Технарь, не работает» - он объяснит по шагам.')
+  })
+  potok.addEventListener('beda', (e) => pokazatBedu(JSON.parse(e.data)))
+
+  potok.addEventListener('ustanovka', (e) => {
+    const u = JSON.parse(e.data)
+    const blok = document.getElementById('ustan')
+    const bok = document.querySelector('.bok')
+    if (!u.est || u.zakonchena){ blok.style.display = 'none'; bok.classList.remove('zanyata'); return }
+    blok.style.display = ''
+    bok.classList.add('zanyata')
+    ubratPrivet()
+    const shagi = document.getElementById('shagi')
+    shagi.innerHTML = ''
+    for (const e2 of u.etapy){
+      const d = document.createElement('span')
+      d.className = 'shag' + (e2.gotovo ? ' gotov' : '') + (e2.nomer === u.tekushchij ? ' seychas' : '')
+      const z = document.createElement('span'); z.textContent = e2.gotovo ? '✅' : (e2.nomer === u.tekushchij ? '▶' : '⬜')
+      const t = document.createElement('span')
+      t.textContent = e2.nazvanie.replace(/\s*\(.*$/, '').replace(/\s*\[.*$/, '').replace(/:.*$/, '')
+      d.append(z, t); shagi.appendChild(d)
+    }
+  })
+
+  potok.addEventListener('podklyucheno', (e) => {
+    const spisok = JSON.parse(e.data)
+    const blok = document.getElementById('podkl-blok')
+    const gde = document.getElementById('podkl')
+    blok.style.display = ''
+    gde.innerHTML = ''
+    for (const p of spisok){
+      const d = document.createElement('div'); d.className = 'podkl-stroka'
+      const t = document.createElement('span'); t.textContent = p.gotovo ? '🟢' : '⚪️'
+      const n = document.createElement('span')
+      const b = document.createElement('b'); b.textContent = p.imya
+      const z = document.createElement('span'); z.className = 'zachem'; z.textContent = p.zachem
+      n.append(b, z); d.append(t, n); gde.appendChild(d)
+    }
+  })
+
+  potok.addEventListener('vitrina', (e) => {
+    const gruppy = JSON.parse(e.data)
+    const v = document.getElementById('vitrina')
+    v.innerHTML = ''
+    let est = false
+    for (const g of gruppy){
+      if (!g.fajly.length) continue
+      est = true
+      const h = document.createElement('h3'); h.textContent = g.imya; v.appendChild(h)
+      for (const f of g.fajly){
+        const adres = '/rabota/' + g.papka + '/' + encodeURIComponent(f.imya)
+        const put = 'results/' + g.papka + '/' + f.imya
+        if (f.vid === 'kartinka' || f.vid === 'video'){
+          const k = document.createElement('div'); k.className = 'karta'
+          const m = document.createElement(f.vid === 'video' ? 'video' : 'img')
+          m.src = adres
+          if (f.vid === 'video'){ m.controls = true; m.preload = 'metadata' }
+          const niz = document.createElement('div'); niz.className = 'niz'
+          const b = document.createElement('b'); b.textContent = f.imya
+          const vp = document.createElement('span'); vp.className = 'v-papke'; vp.textContent = 'в папке ↗'
+          vp.onclick = () => fetch('/api/pokazat?put=' + encodeURIComponent(put))
+          niz.append(b, vp); k.append(m, niz); v.appendChild(k)
+        } else {
+          const stroka = document.createElement('div'); stroka.className = 'karta'
+          const niz = document.createElement('div'); niz.className = 'niz'
+          const a = document.createElement('a'); a.href = adres; a.target = '_blank'
+          a.textContent = f.imya; a.style.color = 'inherit'; a.style.textDecoration = 'none'
+          const vp = document.createElement('span'); vp.className = 'v-papke'; vp.textContent = 'в папке ↗'
+          vp.onclick = () => fetch('/api/pokazat?put=' + encodeURIComponent(put))
+          niz.append(a, vp); stroka.appendChild(niz); v.appendChild(stroka)
+        }
+      }
+    }
+    if (!est){
+      const h = document.createElement('h3'); h.textContent = 'Готовые работы'
+      const p = document.createElement('div'); p.className = 'pusto'
+      p.textContent = 'Пока пусто. Всё, что офис сделает, появится здесь.'
+      v.append(h, p)
+    }
+  })
+
+  potok.addEventListener('plan', (e) => {
+    const { text } = JSON.parse(e.data)
+    if (!text.trim()) return
+    const p = document.getElementById('plan')
+    p.innerHTML = ''
+    const stroki = text.split('\n').filter((s) => /^\s*[-*]\s*\[/.test(s)).slice(0, 12)
+    if (!stroki.length){ p.innerHTML = '<div class="pusto">Контент-план есть, но задач в нём пока нет.</div>'; return }
+    for (const s of stroki){
+      const gotovo = /\[[xX]\]/.test(s)
+      const d = document.createElement('div'); d.className = 'plan-stroka'
+      const g = document.createElement('span'); g.textContent = gotovo ? '✅' : '⬜'
+      const t = document.createElement('span'); t.textContent = s.replace(/^\s*[-*]\s*\[[ xX]\]\s*/, '')
+      if (gotovo) t.style.opacity = '.5'
+      d.append(g, t); p.appendChild(d)
+    }
+  })
+}
+
+// ── старт ────────────────────────────────────────────────────────────────────
+;(async () => {
+  const { razgovory } = await (await fetch('/api/razgovory')).json()
+  if (razgovory.length) razgovor = razgovory[0].id
+  podklyuchitsya()
+})()
+</script>
+</body>
+</html>

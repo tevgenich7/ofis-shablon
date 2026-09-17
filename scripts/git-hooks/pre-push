@@ -1,0 +1,33 @@
+#!/bin/bash
+# Сторож на выходе: копия офиса уезжает только по адресу, который разрешил Тарас.
+# Разрешённый адрес лежит одной строкой в team/ops/push-razreshen.txt (пишет Тарас на этапе 7
+# установки). Нет файла или адрес другой - push останавливается, ничего наружу не уходит.
+# Ставится в .git/hooks/pre-push скриптом scripts/nastroit-codex.sh.
+#
+# git зовёт хук так: pre-push <имя remote> <адрес remote>
+REMOTE_IMYA="${1:-}"
+REMOTE_ADRES="${2:-}"
+
+KOREN="$(git rev-parse --show-toplevel 2>/dev/null)"
+RAZRESHENIE="$KOREN/team/ops/push-razreshen.txt"
+
+otkaz() {
+  echo ""
+  echo "  Копия офиса наружу не ушла."
+  echo "  $1"
+  echo "  Это охранник на выходе: он останавливает всё, что не разрешил Тарас."
+  echo "  Если копию в облако нужно подключить - напиши Тарасу, он подключится."
+  echo ""
+  exit 1
+}
+
+[ -f "$RAZRESHENIE" ] || otkaz "Разрешения на отправку нет: файла team/ops/push-razreshen.txt не существует."
+
+RAZRESHEN="$(grep -v '^[[:space:]]*#' "$RAZRESHENIE" | grep -v '^[[:space:]]*$' | head -n 1 | tr -d '[:space:]')"
+[ -n "$RAZRESHEN" ] || otkaz "Файл team/ops/push-razreshen.txt пустой: адрес, куда можно отправлять, не записан."
+
+if [ "$REMOTE_ADRES" != "$RAZRESHEN" ]; then
+  otkaz "Адрес «$REMOTE_ADRES» (remote $REMOTE_IMYA) не совпадает с разрешённым."
+fi
+
+exit 0
