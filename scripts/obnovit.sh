@@ -104,20 +104,51 @@ SHTAMP="$(date +%Y-%m-%d-%H%M%S)"
 ZAPAS="$KOREN/karantin/do-obnovleniya-$SHTAMP"
 mkdir -p "$ZAPAS"
 
+# Одна упрямая строка не должна бросать офис наполовину обновлённым:
+# что не вышло - запоминаем и говорим в конце, остальное доделываем.
+NE_VYSHLO="$VREMENNAYA/ne-vyshlo"
+: > "$NE_VYSHLO"
+SDELANO=0
+
+set +e
 while IFS=$'\t' read -r sostoyanie put; do
   if [ -f "$KOREN/$put" ]; then
-    mkdir -p "$ZAPAS/$(dirname "$put")"
-    cp -p "$KOREN/$put" "$ZAPAS/$put"
+    mkdir -p "$ZAPAS/$(dirname "$put")" 2>/dev/null
+    cp -p "$KOREN/$put" "$ZAPAS/$put" 2>/dev/null
   fi
-  mkdir -p "$KOREN/$(dirname "$put")"
-  cp -p "$SVEZHEE/$put" "$KOREN/$put"
+  mkdir -p "$KOREN/$(dirname "$put")" 2>/dev/null
+  oshibka="$(cp -p "$SVEZHEE/$put" "$KOREN/$put" 2>&1)"
+  if [ $? -ne 0 ]; then
+    # Файл мог быть защищён от записи - пробуем снять защиту и повторить.
+    chmod u+w "$KOREN/$put" 2>/dev/null
+    oshibka="$(cp -p "$SVEZHEE/$put" "$KOREN/$put" 2>&1)"
+    if [ $? -ne 0 ]; then
+      printf '%s\t%s\n' "$put" "${oshibka:-причина не названа}" >> "$NE_VYSHLO"
+      continue
+    fi
+  fi
+  SDELANO=$((SDELANO + 1))
 done < "$SPISOK"
+set -e
 
 chmod +x "$KOREN/ЗАПУСК.command" 2>/dev/null || true
 find "$KOREN/scripts" -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
 find "$KOREN/.codex/hooks" -name '*.py' -exec chmod +x {} \; 2>/dev/null || true
 
-soobshit "  Готово: обновлено файлов - $KOLICHESTVO"
+if [ -s "$NE_VYSHLO" ]; then
+  soobshit "  Обновлено файлов: $SDELANO из $KOLICHESTVO"
+  soobshit ""
+  soobshit "  Эти заменить не удалось - офис работает, но они остались прежними:"
+  soobshit ""
+  while IFS=$'\t' read -r put prichina; do
+    printf '    %s\n      %s\n' "$put" "$prichina"
+  done < "$NE_VYSHLO"
+  soobshit ""
+  soobshit "  Покажи эти строки тому, кто ставил офис - причина обычно в правах на файл."
+  soobshit ""
+else
+  soobshit "  Готово: обновлено файлов - $SDELANO"
+fi
 soobshit "  Прежние версии лежат тут, если что-то пойдёт не так:"
 soobshit "      karantin/do-obnovleniya-$SHTAMP"
 soobshit ""
