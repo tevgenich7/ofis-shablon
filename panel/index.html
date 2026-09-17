@@ -8,16 +8,15 @@
   :root{
     --fon:#0e0d12; --karta:#17161d; --karta2:#1e1c26; --linia:#2b2833;
     --tekst:#ece9f2; --tusklo:#9a94a8; --akcent:#c9a4ff; --akcent2:#7de2c3;
-    --radius:16px;
+    --radius:16px; --na-akcente:#12101a; color-scheme:dark;
   }
   @media (prefers-color-scheme: light){
     :root{ --fon:#f7f5fa; --karta:#fff; --karta2:#f1eef7; --linia:#e4dfec;
-           --tekst:#1b1922; --tusklo:#6d6779; --akcent:#7b3ff2; --akcent2:#149c78; }
+           --tekst:#1b1922; --tusklo:#6d6779; --akcent:#7b3ff2; --akcent2:#149c78; --na-akcente:#fff; color-scheme:light; }
   }
   *{box-sizing:border-box}
-  body{margin:0;font:15px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fon);color:var(--tekst);height:100vh;overflow:hidden}
-  .setka{display:grid;grid-template-columns:246px 1fr 300px;height:100vh;min-height:0}
-  .setka>*{min-height:0;min-width:0}
+  body{margin:0;font:15px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fon);color:var(--tekst);height:100vh;height:100dvh;overflow:hidden}
+  .setka{display:grid;grid-template-columns:246px minmax(0,1fr) 300px;grid-template-rows:minmax(0,1fr);height:100vh;height:100dvh}
   @media (max-width:1000px){ .setka{grid-template-columns:1fr} .bok,.prav{display:none} }
 
   /* левая колонка - дела */
@@ -32,19 +31,23 @@
 
   /* центр - разговор */
   .centr{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
-  .shapka{flex-shrink:0;padding:14px 22px;border-bottom:1px solid var(--linia);display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .centr > :not(.lenta){flex-shrink:0}
+  .shapka{padding:14px 22px;border-bottom:1px solid var(--linia);display:flex;align-items:center;justify-content:space-between;gap:12px}
   .shapka h1{font-size:15px;margin:0;font-weight:600}
   .shapka .sostoyanie{font-size:12.5px;color:var(--tusklo)}
+  .sostoyanie-bota{font-size:12.5px;color:var(--tusklo);white-space:nowrap}
+  .sostoyanie-bota.rabotaet{color:var(--akcent2)}
+  .sostoyanie-bota.beda-bota{color:var(--akcent)}
   .knopka-tihaya{background:var(--karta2);border:1px solid var(--linia);color:var(--tusklo);border-radius:9px;padding:6px 11px;font:inherit;font-size:12.5px;cursor:pointer}
   .knopka-tihaya:hover{color:var(--tekst)}
 
-  .lenta{flex:1;overflow-y:auto;padding:22px 22px 8px;display:flex;flex-direction:column;gap:14px}
-  .soob{max-width:720px;padding:13px 16px;border-radius:var(--radius);white-space:pre-wrap;word-wrap:break-word}
+  .lenta{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:22px 22px 8px;display:flex;flex-direction:column;gap:14px}
+  .lenta > *{flex-shrink:0}
+  .soob{max-width:min(720px,100%);overflow-wrap:anywhere;padding:13px 16px;border-radius:var(--radius);white-space:pre-wrap;word-wrap:break-word}
   .soob a{color:var(--akcent);text-decoration:underline;text-underline-offset:2px;word-break:break-all}
   .soob a:hover{opacity:.8}
   .soob.ya a{color:inherit}
-  .ot-menya{align-self:flex-end;background:var(--akcent);color:#12101a;border-bottom-right-radius:5px}
-  @media (prefers-color-scheme: dark){ .ot-menya{color:#12101a} }
+  .ot-menya{align-self:flex-end;background:var(--akcent);color:var(--na-akcente);border-bottom-right-radius:5px}
   .ot-ofisa{align-self:flex-start;background:var(--karta);border:1px solid var(--linia);border-bottom-left-radius:5px}
   .rabota{align-self:flex-start;font-size:12.5px;color:var(--tusklo);padding:2px 6px;display:flex;gap:7px;align-items:center}
   .tochki{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--akcent2);animation:puls 1.1s infinite}
@@ -62,10 +65,12 @@
 
   /* ввод */
   .nizh{padding:12px 22px 20px;border-top:1px solid var(--linia)}
-  .pole{flex-shrink:0;display:flex;gap:9px;align-items:flex-end;background:var(--karta);border:1px solid var(--linia);border-radius:14px;padding:9px 10px 9px 15px}
+  .pole{display:flex;gap:9px;align-items:flex-end;background:var(--karta);border:1px solid var(--linia);border-radius:14px;padding:9px 10px 9px 15px}
   .pole:focus-within{border-color:var(--akcent)}
-  textarea{flex:1;background:transparent;border:0;color:var(--tekst);font:inherit;resize:none;max-height:170px;outline:none;padding:4px 0}
-  .otpravit{background:var(--akcent);border:0;color:#12101a;width:34px;height:34px;border-radius:10px;cursor:pointer;font-size:16px;flex-shrink:0}
+  textarea{flex:1;min-width:0;caret-color:var(--tekst);background:transparent;border:0;color:var(--tekst);font:inherit;resize:none;max-height:170px;outline:none;padding:4px 0}
+  textarea::placeholder{color:var(--tusklo);opacity:1}
+  .pole.fajl-nad{outline:2px solid var(--akcent);background:var(--karta2)}
+  .otpravit{background:var(--akcent);border:0;color:var(--na-akcente);width:34px;height:34px;border-radius:10px;cursor:pointer;font-size:16px;flex-shrink:0}
   .otpravit:disabled{opacity:.4;cursor:default}
 
   /* правая колонка - планёрка и готовое */
@@ -88,29 +93,37 @@
   .beda{align-self:flex-start;max-width:720px;background:var(--karta);border:1px solid var(--akcent);border-radius:var(--radius);padding:15px 17px}
   .beda b{display:block;margin-bottom:6px}
   /* вкладки разговоров */
-  .vkladki{flex-shrink:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:12px 22px 4px}
-  .vkl{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:9px;background:var(--karta2);color:var(--tekst);font-size:13px;cursor:pointer;border:1px solid var(--linia)}
-  .vkl.aktiv{background:var(--akcent);color:#fff;border-color:transparent}
+  .vkladki{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;padding:8px 12px;margin:0 0 10px}
+  .vkl{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:9px;background:var(--karta2);color:var(--tekst);font-size:13px;cursor:pointer;border:1px solid transparent}
+  .vkl.aktiv{background:var(--akcent);color:var(--na-akcente);border-color:var(--akcent)}
   .vkl .krest{opacity:.45;font-size:12px}
   .vkl .krest:hover{opacity:1}
-  .vkl-plus{padding:5px 10px;border-radius:9px;background:var(--karta2);color:var(--tekst);border:1px solid var(--linia);font-size:13px;cursor:pointer;opacity:.85}
+  .vkl-plus{flex-shrink:0;padding:5px 10px;border-radius:9px;background:var(--karta2);color:var(--tekst);font-size:13px;cursor:pointer;opacity:.75}
   /* витрина с превью */
-  .karta{display:block;margin-bottom:10px;border-radius:10px;overflow:hidden;background:var(--karta2);border:1px solid var(--linia);color:var(--tekst)}
-  .karta img,.karta video{display:block;width:100%;height:auto;max-height:190px;object-fit:cover;background:var(--karta)}
+  .karta{display:block;margin-bottom:10px;border-radius:10px;overflow:hidden;background:var(--karta);color:var(--tekst);border:1px solid var(--linia)}
+  .karta img,.karta video{display:block;width:100%;height:auto;max-height:190px;object-fit:cover;background:#0f1218}
   .karta .niz{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;font-size:12px}
   .karta .niz b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .v-papke{opacity:.6;cursor:pointer;white-space:nowrap}
   .v-papke:hover{opacity:1}
   /* установка */
-  .ustan{flex-shrink:0;margin:8px 22px 4px;padding:14px 16px;border:1px solid var(--linia);border-radius:14px;background:var(--karta2)}
+  .ustan{margin:0 0 14px;padding:14px 16px;border:1px solid var(--linia);border-radius:14px;background:var(--karta);color:var(--tekst);max-height:25vh;overflow-y:auto}
   .ustan h3{margin:0 0 3px;font-size:15px}
-  .ustan .pod{opacity:.6;font-size:13px;margin-bottom:11px}
+  .ustan .pod{color:var(--tusklo);font-size:13px;margin-bottom:11px}
   .shagi{display:flex;flex-wrap:wrap;gap:7px}
-  .shag{display:flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:var(--karta);border:1px solid var(--linia);color:var(--tekst);font-size:13px;opacity:.55}
-  .shag.gotov{opacity:.85}
-  .shag.seychas{opacity:1;background:var(--akcent);color:#fff;border-color:transparent}
+  .shag{display:flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:var(--karta2);color:var(--tekst);font-size:13px;}
+  .shag.gotov{color:var(--tekst)}
+  .shag.seychas{opacity:1;background:var(--akcent);color:var(--na-akcente);box-shadow:0 0 0 1px var(--akcent) inset}
   .podkl-stroka{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px;line-height:1.35}
-  .podkl-stroka .zachem{display:block;opacity:.5;font-size:12px}
+  .podkl-stroka.nastraivaetsya{cursor:pointer;padding:7px;border-radius:10px;margin-left:-7px;margin-right:-7px}
+  .podkl-stroka.nastraivaetsya:hover{background:var(--karta2)}
+  .podkl-stroka .zachem{display:block;color:var(--tusklo);font-size:12px}
+  .klyuch-forma{display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 10px 22px}
+  .klyuch-forma input{width:100%;min-width:0;background:var(--karta2);border:1px solid var(--linia);border-radius:8px;padding:7px 8px;color:var(--tekst);font:inherit}
+  .klyuch-forma input:focus{outline:none;border-color:var(--akcent)}
+  .klyuch-forma button{background:var(--akcent);color:var(--na-akcente);border:0;border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer}
+  .klyuch-podskazka{width:100%;font-size:12px;color:var(--tusklo)}
+  .klyuch-podskazka.oshibka{color:var(--akcent)}
   .bok.zanyata .delo{opacity:.35;pointer-events:none}
   .beda ol{margin:9px 0 0;padding-left:19px}
   .beda li{margin-bottom:4px}
@@ -145,6 +158,8 @@
       <h1>Разговор с офисом</h1>
       <div style="display:flex;align-items:center;gap:12px">
         <span class="sostoyanie" id="sostoyanie">офис на месте</span>
+        <span class="sostoyanie-bota" id="sostoyanie-bota">бот проверяется…</span>
+        <button class="knopka-tihaya" id="perezapustit-bota">перезапустить бота</button>
         <button class="knopka-tihaya" id="zanovo">начать заново</button>
       </div>
     </div>
@@ -170,8 +185,8 @@
 
     <div class="nizh">
       <div class="pole">
-        <textarea id="vvod" rows="1" placeholder="Напиши, что нужно…"></textarea>
-        <button class="otpravit" id="otpravit">↑</button>
+        <textarea aria-label="Сообщение офису" id="vvod" rows="1" placeholder="Напиши, что нужно… Скриншот можно перетащить сюда или вставить через ⌘V."></textarea>
+        <button class="otpravit" id="otpravit" aria-label="Отправить сообщение">↑</button>
       </div>
     </div>
   </main>
@@ -195,13 +210,19 @@ const lenta = document.getElementById('lenta')
 const vvod = document.getElementById('vvod')
 const knopka = document.getElementById('otpravit')
 const sostoyanie = document.getElementById('sostoyanie')
+const sostoyanieBota = document.getElementById('sostoyanie-bota')
+const perezapustitBota = document.getElementById('perezapustit-bota')
 let tekushiyOtvet = null
 let razgovor = null      // id открытой вкладки
 let potok = null
 
 // ── лента ────────────────────────────────────────────────────────────────────
 function ubratPrivet(){ const p = document.getElementById('privet'); if (p) p.remove() }
-function vniz(){ lenta.scrollTop = lenta.scrollHeight }
+let sleditZaNizom = true
+lenta.addEventListener('scroll', () => {
+  sleditZaNizom = lenta.scrollHeight - lenta.scrollTop - lenta.clientHeight < 60
+}, { passive: true })
+function vniz(){ if (sleditZaNizom) lenta.scrollTop = lenta.scrollHeight }
 
 // Ссылки в ответе офиса делаем кликабельными. Вызывается, КОГДА ответ дописан:
 // текст приходит кусками, и адрес может разорваться между ними.
@@ -210,14 +231,12 @@ function ozhivitSsylki(el){
   const syroj = el.textContent
   if (!syroj || !/https?:\/\//.test(syroj)) return
   el.textContent = ''
-  // [подпись](адрес) и просто адрес
   const obraz = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"')\]]+)/g
   let konec = 0, m
   while ((m = obraz.exec(syroj)) !== null){
     if (m.index > konec) el.appendChild(document.createTextNode(syroj.slice(konec, m.index)))
     let adres = m[2] || m[3]
     let hvost = ''
-    // знаки препинания в конце - это предложение, а не часть адреса
     while (/[.,;:!?)]$/.test(adres)){ hvost = adres.slice(-1) + hvost; adres = adres.slice(0, -1) }
     const a = document.createElement('a')
     a.href = adres; a.target = '_blank'; a.rel = 'noopener noreferrer'
@@ -227,6 +246,27 @@ function ozhivitSsylki(el){
     konec = m.index + m[0].length
   }
   if (konec < syroj.length) el.appendChild(document.createTextNode(syroj.slice(konec)))
+}
+
+// Свернуть-развернуть раздел в правой колонке. Закрытое остаётся закрытым
+// и после перезапуска офиса: у каждого раздела своя пометка в памяти браузера.
+function svorachivaemyj(blok, klyuch, skolko){
+  const h = blok.querySelector('h3')
+  if (!h || h.dataset.gotov) return
+  h.dataset.gotov = '1'
+  const s = document.createElement('span'); s.className = 'strelka'; s.textContent = '▼'
+  h.prepend(s)
+  if (typeof skolko === 'number' && skolko > 0){
+    const n = document.createElement('span'); n.className = 'skolko'; n.textContent = skolko
+    h.appendChild(n)
+  }
+  let zakryt = false
+  try { zakryt = localStorage.getItem('svernut:' + klyuch) === '1' } catch {}
+  if (zakryt) blok.classList.add('svernut')
+  h.onclick = () => {
+    blok.classList.toggle('svernut')
+    try { localStorage.setItem('svernut:' + klyuch, blok.classList.contains('svernut') ? '1' : '0') } catch {}
+  }
 }
 
 function dobavit(klass, text){
@@ -298,6 +338,7 @@ async function narisovatVkladki(spisok){
 
 function otkryt(id){
   razgovor = id
+  sleditZaNizom = true
   lenta.innerHTML = ''
   if (potok) potok.close()
   podklyuchitsya()
@@ -306,12 +347,68 @@ function otkryt(id){
 // ── отправка ─────────────────────────────────────────────────────────────────
 async function skazat(text){
   if (!text.trim() || !razgovor) return
+  sleditZaNizom = true
   dobavit('ot-menya', text)
   vvod.value = ''; vvod.style.height = 'auto'
   sostoyanie.textContent = 'офис думает…'
   tekushiyOtvet = null
   await fetch('/api/skazat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, razgovor }) })
 }
+
+async function polozhitFajl(fajl, id = razgovor, izBufera = false){
+  if (!id) { dobavit('ot-ofisa', 'Офис ещё подключается. Попробуй добавить файл через несколько секунд.'); return }
+  if (fajl.size > 60 * 1024 * 1024){
+    dobavit('ot-ofisa', 'Файл больше 60 МБ. Такой большой файл нужно положить в папку inbox вручную.'); return
+  }
+  const data = new Date()
+  const dva = n => String(n).padStart(2, '0')
+  const snimok = `snimok-${data.getFullYear()}-${dva(data.getMonth()+1)}-${dva(data.getDate())}-${dva(data.getHours())}-${dva(data.getMinutes())}-${dva(data.getSeconds())}.png`
+  const imya = !fajl.name || (izBufera && fajl.type === 'image/png') ? snimok : fajl.name
+  sleditZaNizom = true
+  const stroka = dobavit('ot-menya', 'файл: ' + imya)
+  try {
+    const bytes = new Uint8Array(await fajl.arrayBuffer())
+    const kuski = []
+    for (let i = 0; i < bytes.length; i += 8192) kuski.push(String.fromCharCode(...bytes.subarray(i, i + 8192)))
+    const dannye = btoa(kuski.join(''))
+    const otvet = await fetch('/api/fajl', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ imya, dannye, razgovor: id }) })
+    const rezultat = await otvet.json()
+    if (!otvet.ok || !rezultat.ok) {
+      stroka.textContent += ' — не удалось добавить'
+      if (razgovor === id) dobavit('ot-ofisa', rezultat.pochemu || 'Файл не сохранился. Попробуй ещё раз.')
+    }
+  } catch {
+    stroka.textContent += ' — не удалось добавить'
+    if (razgovor === id) dobavit('ot-ofisa', 'Не удалось добавить файл. Проверь, что панель открыта, и попробуй ещё раз.')
+  }
+}
+
+const pole = vvod.closest('.pole')
+let dragGlubina = 0
+document.addEventListener('dragenter', e => {
+  e.preventDefault()
+  dragGlubina++
+  if (Array.from(e.dataTransfer?.types || []).includes('Files')) pole.classList.add('fajl-nad')
+})
+document.addEventListener('dragover', e => { e.preventDefault() })
+document.addEventListener('dragleave', e => {
+  e.preventDefault()
+  dragGlubina = Math.max(0, dragGlubina - 1)
+  if (!dragGlubina) pole.classList.remove('fajl-nad')
+})
+document.addEventListener('drop', async e => {
+  e.preventDefault()
+  dragGlubina = 0; pole.classList.remove('fajl-nad')
+  const fajly = Array.from(e.dataTransfer?.files || []), id = razgovor
+  for (const fajl of fajly) await polozhitFajl(fajl, id)
+})
+vvod.addEventListener('paste', async e => {
+  const fajly = Array.from(e.clipboardData?.items || []).filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean)
+  if (!fajly.length) return
+  e.preventDefault()
+  const id = razgovor
+  for (const fajl of fajly) await polozhitFajl(fajl, id, true)
+})
 
 knopka.onclick = () => skazat(vvod.value)
 vvod.addEventListener('keydown', (e) => {
@@ -328,28 +425,41 @@ document.getElementById('zanovo').onclick = async () => {
   dobavit('ot-ofisa', 'Начали с чистого листа. Что делаем?')
 }
 
-// ── поток от офиса ───────────────────────────────────────────────────────────
-// Свернуть-развернуть раздел в правой колонке. Закрытое остаётся закрытым
-// и после перезапуска офиса: у каждого раздела своя пометка в памяти браузера.
-function svorachivaemyj(blok, klyuch, skolko){
-  const h = blok.querySelector('h3')
-  if (!h || h.dataset.gotov) return
-  h.dataset.gotov = '1'
-  const s = document.createElement('span'); s.className = 'strelka'; s.textContent = '▼'
-  h.prepend(s)
-  if (typeof skolko === 'number' && skolko > 0){
-    const n = document.createElement('span'); n.className = 'skolko'; n.textContent = skolko
-    h.appendChild(n)
-  }
-  let zakryt = false
-  try { zakryt = localStorage.getItem('svernut:' + klyuch) === '1' } catch {}
-  if (zakryt) blok.classList.add('svernut')
-  h.onclick = () => {
-    blok.classList.toggle('svernut')
-    try { localStorage.setItem('svernut:' + klyuch, blok.classList.contains('svernut') ? '1' : '0') } catch {}
+function pokazatSostoyanieBota(b){
+  sostoyanieBota.className = 'sostoyanie-bota'
+  if (b.zablokirovan) {
+    sostoyanieBota.textContent = 'бот не запускается, посмотри журнал'
+    sostoyanieBota.classList.add('beda-bota')
+  } else if (b.zamorozhen) {
+    sostoyanieBota.textContent = 'бот перезапускается…'
+  } else if (!b.zhiv) {
+    sostoyanieBota.textContent = 'бот не работает'
+    sostoyanieBota.classList.add('beda-bota')
+  } else if (b.telegramNedostupen) {
+    sostoyanieBota.textContent = 'бот не видит телеграм, проверь VPN'
+    sostoyanieBota.classList.add('beda-bota')
+  } else {
+    sostoyanieBota.textContent = 'бот работает'
+    sostoyanieBota.classList.add('rabotaet')
   }
 }
 
+perezapustitBota.onclick = async () => {
+  perezapustitBota.disabled = true
+  perezapustitBota.textContent = 'перезапускаю…'
+  try {
+    const r = await fetch('/api/bot/perezapustit', { method:'POST' })
+    pokazatSostoyanieBota(await r.json())
+  } catch {
+    sostoyanieBota.textContent = 'бот не запускается, посмотри журнал'
+    sostoyanieBota.className = 'sostoyanie-bota beda-bota'
+  } finally {
+    perezapustitBota.disabled = false
+    perezapustitBota.textContent = 'перезапустить бота'
+  }
+}
+
+// ── поток от офиса ───────────────────────────────────────────────────────────
 {
   const pb = document.getElementById('plan-blok')
   if (pb) svorachivaemyj(pb, 'plan')
@@ -393,6 +503,7 @@ function podklyuchitsya(){
       + '. Попробуй ещё раз или напиши «Технарь, не работает» - он объяснит по шагам.')
   })
   potok.addEventListener('beda', (e) => pokazatBedu(JSON.parse(e.data)))
+  potok.addEventListener('bot', (e) => pokazatSostoyanieBota(JSON.parse(e.data)))
 
   potok.addEventListener('ustanovka', (e) => {
     const u = JSON.parse(e.data)
@@ -417,17 +528,46 @@ function podklyuchitsya(){
   potok.addEventListener('podklyucheno', (e) => {
     const spisok = JSON.parse(e.data)
     const blok = document.getElementById('podkl-blok')
-    const gde = document.getElementById('podkl')
     svorachivaemyj(blok, 'podkl')
+    const gde = document.getElementById('podkl')
     blok.style.display = ''
     gde.innerHTML = ''
     for (const p of spisok){
       const d = document.createElement('div'); d.className = 'podkl-stroka'
+      if (p.klyuch) d.classList.add('nastraivaetsya')
       const t = document.createElement('span'); t.textContent = p.gotovo ? '🟢' : '⚪️'
       const n = document.createElement('span')
       const b = document.createElement('b'); b.textContent = p.imya
       const z = document.createElement('span'); z.className = 'zachem'; z.textContent = p.zachem
       n.append(b, z); d.append(t, n); gde.appendChild(d)
+      if (!p.klyuch) continue
+      d.onclick = () => {
+        if (d.nextElementSibling?.classList.contains('klyuch-forma')) { d.nextElementSibling.remove(); return }
+        const staraya = gde.querySelector('.klyuch-forma'); if (staraya) staraya.remove()
+        const forma = document.createElement('form'); forma.className = 'klyuch-forma'
+        const v = document.createElement('input')
+        v.type = 'password'; v.autocomplete = 'off'; v.spellcheck = false
+        v.placeholder = 'Вставь ключ — после сохранения он не показывается'
+        v.setAttribute('aria-label', 'Ключ для ' + p.imya)
+        const sohranit = document.createElement('button'); sohranit.type = 'submit'; sohranit.textContent = 'сохранить'
+        const pod = document.createElement('div'); pod.className = 'klyuch-podskazka'
+        pod.textContent = 'Ключ останется только на этом компьютере.'
+        forma.append(v, sohranit, pod)
+        forma.onsubmit = async (sobytie) => {
+          sobytie.preventDefault()
+          sohranit.disabled = true; pod.className = 'klyuch-podskazka'; pod.textContent = 'сохраняю…'
+          try {
+            const otvet = await fetch('/api/klyuch', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ imya: p.klyuch, znachenie: v.value }) })
+            const rezultat = await otvet.json()
+            v.value = ''
+            if (rezultat.ok) pod.textContent = 'стоит • ' + rezultat.dlina + ' символов'
+            else { pod.classList.add('oshibka'); pod.textContent = rezultat.soobshenie || 'Не получилось сохранить. Попробуй ещё раз.' }
+          } catch {
+            v.value = ''; pod.classList.add('oshibka'); pod.textContent = 'Не получилось сохранить. Попробуй ещё раз.'
+          } finally { sohranit.disabled = false }
+        }
+        d.after(forma); v.focus()
+      }
     }
   })
 

@@ -16,13 +16,141 @@ const crypto = require('crypto')
 const KOREN = path.resolve(__dirname, '..')       // корень офиса
 const PORT = Number(process.env.OFFICE_PORT || 4477)
 const PANEL = __dirname
+const KLYUCHI_PANELI = {
+  DEEPGRAM_API_KEY: { dlina: 40 },
+  GEMINI_API_KEY: {}, FAL_KEY: {}, PEXELS_API_KEY: {},
+  UNSPLASH_API_KEY: {}, PIXABAY_API_KEY: {}, TELEGRAM_BOT_TOKEN: {},
+}
 
 const uuid = () => crypto.randomUUID()
 
 // ── состояние ────────────────────────────────────────────────────────────────
 let agent = null                 // { vid: 'claude' | 'codex', bin }
+const codexLaunchers = new Map()
 const razgovory = new Map()      // id -> разговор
 let vstrechaOtpravlena = false
+let podnyatijBotaPodryad = 0
+let botZablokirovan = false
+let proverkaBota = null
+
+const BOT_OTNOSITELNO = path.join('scripts', 'tg', 'ofis-bot.py')
+const BOT_POISK = 'ofis-bot.py'
+
+function najtiPython3() {
+  for (const kandidat of ['/opt/homebrew/bin/python3', '/usr/local/bin/python3', '/usr/bin/python3']) {
+    if (fs.existsSync(kandidat)) return kandidat
+  }
+  const rezultat = spawnSync('which', ['python3'], { encoding: 'utf8' })
+  const kandidat = rezultat.status === 0 ? rezultat.stdout.trim().split(/\r?\n/)[0] : ''
+  return kandidat && path.isAbsolute(kandidat) && fs.existsSync(kandidat) ? kandidat : null
+}
+
+function spisokBotov() {
+  const r = spawnSync('pgrep', ['-f', BOT_POISK], { encoding: 'utf8' })
+  if (r.status !== 0) return []
+  return r.stdout.split(/\s+/).map(Number).filter(Number.isInteger).map((pid) => {
+    const ps = spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' })
+    return { pid, stat: ps.status === 0 ? ps.stdout.trim() : '' }
+  })
+}
+
+function poslednieStrokiZhurnala() {
+  try {
+    const d = fs.readFileSync(path.join(PANEL, 'zhurnal-bota.log'))
+    return d.subarray(Math.max(0, d.length - 16 * 1024)).toString('utf8').split(/\r?\n/).slice(-80).join('\n')
+  } catch { return '' }
+}
+
+function sostoyanieBota() {
+  const boty = spisokBotov()
+  const zamorozhen = boty.some((b) => b.stat.includes('T'))
+  const zhiv = boty.length > 0 && !zamorozhen
+  return {
+    zhiv,
+    zamorozhen,
+    zablokirovan: botZablokirovan,
+    telegramNedostupen: zhiv && /ConnectionResetError/.test(poslednieStrokiZhurnala()),
+  }
+}
+
+function obnovitSostoyanieBota() {
+  const sostoyanie = sostoyanieBota()
+  poslatVsem('bot', sostoyanie)
+  return sostoyanie
+}
+
+function ubitBotov() {
+  for (const { pid } of spisokBotov()) {
+    try { process.kill(pid, 'SIGTERM') } catch {}
+    // Замороженный процесс не обработает SIGTERM, пока не получит SIGCONT.
+    try { process.kill(pid, 'SIGCONT') } catch {}
+  }
+}
+
+const pauza = (ms) => new Promise((gotovo) => setTimeout(gotovo, ms))
+
+function podnyatBota() {
+  // Именно pgrep, а не ссылка на дочерний процесс: бот мог быть поднят прошлым
+  // запуском панели и продолжает жить после её закрытия.
+  if (spisokBotov().length) return false
+  if (botZablokirovan || podnyatijBotaPodryad >= 5) {
+    botZablokirovan = true
+    return false
+  }
+  const skript = path.join(KOREN, BOT_OTNOSITELNO)
+  if (!fs.existsSync(skript)) return console.log('[бот] не поднят: не найден файл бота.')
+  const python = najtiPython3()
+  if (!python) return console.log('[бот] не поднят: не найдена программа Python 3.')
+
+  const zhurnal = path.join(PANEL, 'zhurnal-bota.log')
+  const vyvod = fs.openSync(zhurnal, 'a')
+  try {
+    const bot = spawn(python, ['-u', skript], {
+      cwd: KOREN,
+      detached: true,
+      stdio: ['ignore', vyvod, vyvod],
+    })
+    bot.unref()
+    podnyatijBotaPodryad += 1
+  } catch (e) {
+    console.error(`[бот] не удалось запустить; журнал: ${zhurnal}`, e)
+    return false
+  } finally {
+    fs.closeSync(vyvod)
+  }
+  return true
+}
+
+function prismotretZaBotom() {
+  let sostoyanie = sostoyanieBota()
+  if (sostoyanie.zamorozhen) {
+    ubitBotov()
+    // SIGTERM уже отправлен, но даём ядру убрать старый процесс до нового запуска.
+    // Если он всё ещё висит, это именно тот случай, когда его надо убрать принудительно.
+    setTimeout(() => {
+      for (const { pid } of spisokBotov()) { try { process.kill(pid, 'SIGKILL') } catch {} }
+      setTimeout(() => { podnyatBota(); obnovitSostoyanieBota() }, 50).unref()
+    }, 300).unref()
+  } else if (!sostoyanie.zhiv) {
+    podnyatBota()
+  } else {
+    // Бот пережил полную проверку: это не серия мгновенных падений.
+    podnyatijBotaPodryad = 0
+  }
+  obnovitSostoyanieBota()
+}
+
+async function perezapustitBota() {
+  botZablokirovan = false
+  podnyatijBotaPodryad = 0
+  ubitBotov()
+  await pauza(300)
+  // На случай, если обычное завершение зависло, убираем только найденные процессы бота.
+  for (const { pid } of spisokBotov()) { try { process.kill(pid, 'SIGKILL') } catch {} }
+  await pauza(50)
+  podnyatBota()
+  return obnovitSostoyanieBota()
+}
 
 function novyjRazgovor(imya) {
   const id = uuid().slice(0, 8)
@@ -124,6 +252,17 @@ function podnyat(R, prodolzhit) {
 
 // ── Codex: один процесс на одно сообщение, разговор держится через thread id ───
 function podnyatCodex(R, prodolzhit) {
+  // Панель может работать через Rosetta, хотя Codex установлен для Apple Silicon.
+  // Проверяем родной запуск один раз; на Intel остаётся обычный способ.
+  if (!codexLaunchers.has(agent.bin)) {
+    const native = process.platform === 'darwin'
+      ? spawnSync('/usr/bin/arch', ['-arm64', agent.bin, '--version'], { timeout: 5000, encoding: 'utf8' })
+      : null
+    codexLaunchers.set(agent.bin, native && native.status === 0
+      ? { bin: '/usr/bin/arch', prefix: ['-arm64', agent.bin] }
+      : { bin: agent.bin, prefix: [] })
+  }
+  const launcher = codexLaunchers.get(agent.bin)
   // --full-auto убран в codex 0.154: теперь песочница и политика согласований задаются явно
   // --dangerously-bypass-hook-trust: сторожа офиса (.codex/hooks) запускаются без ручного
   // одобрения через /hooks. Иначе Codex молча пропускает хуки, пока человек их не «доверил»,
@@ -131,7 +270,7 @@ function podnyatCodex(R, prodolzhit) {
   const argv = ['exec', '--json', '--skip-git-repo-check', '--dangerously-bypass-hook-trust',
                 '-s', 'workspace-write', '-c', 'approval_policy="never"', '-C', KOREN]
   if (prodolzhit && R.sessionId) argv.push('resume', R.sessionId)
-  const p = spawn(agent.bin, argv, { cwd: KOREN, stdio: ['pipe', 'pipe', 'pipe'] })
+  const p = spawn(launcher.bin, [...launcher.prefix, ...argv], { cwd: KOREN, stdio: ['pipe', 'pipe', 'pipe'] })
   R.poslednijOtvet = ''
   let hvost = ''
   p.stdout.on('data', (buf) => {
@@ -376,15 +515,47 @@ function chtoPodklyucheno() {
   return [
     { imya: 'Сборка роликов', gotovo: est('ffmpeg'), zachem: 'Монтажёр склеивает видео' },
     { imya: 'Карусели картинками', gotovo: est('magick'), zachem: 'Дизайнер собирает слайды' },
-    { imya: 'Расшифровка речи', gotovo: !!klyuchi.DEEPGRAM_API_KEY, zachem: 'офис слышит, что сказано в дублях' },
-    { imya: 'Картинки (Gemini)', gotovo: !!(klyuchi.GEMINI_API_KEY || klyuchi.GOOGLE_API_KEY), zachem: 'обложки, фоны, слайды' },
-    { imya: 'Картинки (FLUX)', gotovo: !!klyuchi.FAL_KEY, zachem: 'картинки посложнее, по кадру-образцу' },
-    { imya: 'Стоки', gotovo: !!(klyuchi.PEXELS_API_KEY || klyuchi.UNSPLASH_API_KEY || klyuchi.PIXABAY_API_KEY), zachem: 'перебивки в роликах и фоны' },
+    { imya: 'Расшифровка речи', gotovo: !!klyuchi.DEEPGRAM_API_KEY, zachem: 'офис слышит, что сказано в дублях', klyuch: 'DEEPGRAM_API_KEY' },
+    { imya: 'Картинки (Gemini)', gotovo: !!(klyuchi.GEMINI_API_KEY || klyuchi.GOOGLE_API_KEY), zachem: 'обложки, фоны, слайды', klyuch: 'GEMINI_API_KEY' },
+    { imya: 'Картинки (FLUX)', gotovo: !!klyuchi.FAL_KEY, zachem: 'картинки посложнее, по кадру-образцу', klyuch: 'FAL_KEY' },
+    { imya: 'Стоки', gotovo: !!(klyuchi.PEXELS_API_KEY || klyuchi.UNSPLASH_API_KEY || klyuchi.PIXABAY_API_KEY), zachem: 'перебивки в роликах и фоны', klyuch: 'PEXELS_API_KEY' },
     { imya: 'Гугл-документы', gotovo: gugl, zachem: 'таблицы, документы, формы, диск' },
     { imya: 'Бот в телеграме', gotovo: botZhiv, zachem: 'правки голосом с телефона' },
     { imya: 'Кнопка на рабочем столе', gotovo: knopka, zachem: 'офис открывается без терминала' },
     { imya: 'Копии офиса', gotovo: kopii, zachem: 'работа не живёт в одном экземпляре' },
   ]
+}
+
+function zapisatKlyuch(imya, syroe) {
+  if (!Object.prototype.hasOwnProperty.call(KLYUCHI_PANELI, imya) || typeof syroe !== 'string') {
+    return { ok: false, soobshenie: 'Выбери подключение из списка.' }
+  }
+  const znachenie = syroe.trim()
+  if (!znachenie) return { ok: false, soobshenie: 'Вставь ключ целиком.' }
+  if (/\s/.test(znachenie)) return { ok: false, soobshenie: 'Похоже, скопировалось лишнее, скопируй только сам ключ.' }
+  const pravilo = KLYUCHI_PANELI[imya]
+  if (pravilo.dlina && znachenie.length !== pravilo.dlina) {
+    const dva = znachenie.length === pravilo.dlina * 2
+    return { ok: false, soobshenie: dva
+      ? `Получилось ${znachenie.length} символов, а у Deepgram ключ ровно ${pravilo.dlina}. Похоже, скопировались два ключа. Проверь, пожалуйста, что это один ключ.`
+      : `Получилось ${znachenie.length} символов, а у Deepgram ключ ровно ${pravilo.dlina}. Проверь, пожалуйста, что это один ключ.` }
+  }
+  const fajl = path.join(KOREN, '.' + 'env')
+  const vremennyj = path.join(KOREN, `.${process.pid}.${crypto.randomBytes(8).toString('hex')}.tmp`)
+  try {
+    let stroki = []
+    try { stroki = fs.readFileSync(fajl, 'utf8').split(/\r?\n/) } catch (e) { if (e.code !== 'ENOENT') throw e }
+    const novye = stroki.filter((s) => !s.startsWith(`${imya}=`))
+    while (novye.length && novye[novye.length - 1] === '') novye.pop()
+    novye.push(`${imya}=${znachenie}`)
+    fs.writeFileSync(vremennyj, novye.join('\n') + '\n', { mode: 0o600 })
+    fs.renameSync(vremennyj, fajl)
+    fs.chmodSync(fajl, 0o600)
+    return { ok: true, dlina: znachenie.length }
+  } catch {
+    try { fs.unlinkSync(vremennyj) } catch {}
+    return { ok: false, soobshenie: 'Не получилось сохранить ключ. Попробуй ещё раз.' }
+  }
 }
 
 // Первое слово в панели говорит офис, а не человек: она открывает панель и уже видит,
@@ -419,9 +590,24 @@ const TIPY = {
 
 function telo(req) {
   return new Promise((res) => {
-    let t = ''
-    req.on('data', (c) => { t += c })
-    req.on('end', () => { try { res(JSON.parse(t)) } catch { res({}) } })
+    let kuski = [], razmer = 0, zakonchen = false
+    const pusto = () => { zakonchen = true; kuski = []; res({}) }
+    req.on('data', (c) => {
+      if (zakonchen) return
+      razmer += c.length
+      if (razmer > 80 * 1024 * 1024) { pusto(); req.destroy(); return }
+      kuski.push(c)
+    })
+    req.on('error', pusto)
+    req.on('aborted', pusto)
+    req.on('end', () => {
+      if (zakonchen) return
+      try {
+        const d = JSON.parse(Buffer.concat(kuski).toString('utf8'))
+        res(d && typeof d === 'object' && !Array.isArray(d) ? d : {})
+      } catch { res({}) }
+      zakonchen = true; kuski = []
+    })
   })
 }
 
@@ -461,6 +647,19 @@ const server = http.createServer(async (req, res) => {
   // список вкладок
   if (u.pathname === '/api/razgovory') return otvetJson(res, { razgovory: spisokRazgovorov() })
 
+  if (u.pathname === '/api/bot') return otvetJson(res, sostoyanieBota())
+
+  if (u.pathname === '/api/bot/perezapustit' && req.method === 'POST') {
+    return otvetJson(res, await perezapustitBota())
+  }
+
+  if (u.pathname === '/api/klyuch' && req.method === 'POST') {
+    const d = await telo(req)
+    const rezultat = zapisatKlyuch(d.imya, d.znachenie)
+    if (rezultat.ok) poslatVsem('podklyucheno', chtoPodklyucheno())
+    return otvetJson(res, rezultat)
+  }
+
   // новая вкладка
   if (u.pathname === '/api/novyj' && req.method === 'POST') {
     const d = await telo(req)
@@ -496,6 +695,7 @@ const server = http.createServer(async (req, res) => {
     res.write(`event: plan\ndata: ${JSON.stringify({ text: prochitatPlan() })}\n\n`)
     res.write(`event: ustanovka\ndata: ${JSON.stringify(sostoyanieUstanovki())}\n\n`)
     res.write(`event: podklyucheno\ndata: ${JSON.stringify(chtoPodklyucheno())}\n\n`)
+    res.write(`event: bot\ndata: ${JSON.stringify(sostoyanieBota())}\n\n`)
     req.on('close', () => { R.podpischiki = R.podpischiki.filter((r) => r !== res) })
     setTimeout(() => vstretit(R), 400)   // офис здоровается первым, человеку писать не нужно
     return
@@ -515,6 +715,43 @@ const server = http.createServer(async (req, res) => {
       R.ochered.push(d.text)
       otpravitDalshe(R)
     }
+    return otvetJson(res, { ok: true })
+  }
+
+  if (u.pathname === '/api/fajl' && req.method === 'POST') {
+    const d = await telo(req)
+    if (req.aborted) return
+    const R = razgovory.get(d.razgovor)
+    if (!R) return otvetJson(res, { ok: false, pochemu: 'Нет такого разговора. Обнови страницу.' })
+    if (typeof d.imya !== 'string' || typeof d.dannye !== 'string'
+        || d.dannye.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(d.dannye)) {
+      return otvetJson(res, { ok: false, pochemu: 'Не получилось прочитать файл. Попробуй ещё раз.' })
+    }
+    let imya = d.imya.replace(/[\\/\x00-\x1f\x7f]/g, '').trim().replace(/^\.+/, '') || 'fajl'
+    // Ограничиваем длину имени, оставляя место для метки при совпадении.
+    imya = Array.from(imya).slice(0, 80).join('')
+    const dannye = Buffer.from(d.dannye, 'base64')
+    if (dannye.length > 60 * 1024 * 1024) return otvetJson(res, { ok: false, pochemu: 'Файл больше 60 МБ. Положи его в папку inbox вручную.' })
+    try {
+      const inbox = path.join(fs.realpathSync(KOREN), 'inbox')
+      fs.mkdirSync(inbox, { recursive: true })
+      if (fs.realpathSync(inbox) !== inbox) throw new Error('inbox path')
+      const ext = path.extname(imya), osnova = path.basename(imya, ext)
+      for (let n = 0; ; n++) {
+        const kandidat = n ? `${osnova}-${Date.now()}-${n}${ext}` : imya
+        const polnyj = path.resolve(inbox, kandidat)
+        if (!polnyj.startsWith(inbox + path.sep)) throw new Error('file path')
+        try {
+          fs.writeFileSync(polnyj, dannye, { flag: 'wx' })
+          imya = kandidat; break
+        } catch (e) { if (e.code !== 'EEXIST') throw e }
+      }
+    } catch {
+      return otvetJson(res, { ok: false, pochemu: 'Не удалось сохранить файл в офисе. Попробуй ещё раз.' })
+    }
+    R.istoriya.push({ kto: 'ya', text: `файл: ${imya}` })
+    R.ochered.push(`Файл лежит в ${JSON.stringify('inbox/' + imya)}. Посмотри, что это, и разбери по правилам офиса: медиа в knowledge/raw, скриншот статистики передай Маркетологу в цифры, текст в сырьё. Ничего не отправляй наружу; расшифровка только после отдельного согласия владелицы.`)
+    otpravitDalshe(R)
     return otvetJson(res, { ok: true })
   }
 
@@ -542,7 +779,19 @@ function otdat(res, fajl) {
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`\n  Офис открыт: http://localhost:${PORT}\n  Чтобы закрыть - просто закрой это окно.\n`)
+  prismotretZaBotom()
+  proverkaBota = setInterval(prismotretZaBotom, 15 * 1000)
+  proverkaBota.unref()
   if (process.env.BROWSER === 'none') return
   const otkryt = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open'
   try { spawn(otkryt, [`http://localhost:${PORT}`], { detached: true, stdio: 'ignore' }).unref() } catch {}
 })
+
+function zavrshitOfis() {
+  if (proverkaBota) clearInterval(proverkaBota)
+  server.close(() => process.exit(0))
+  setTimeout(() => process.exit(0), 2000).unref()
+}
+
+process.once('SIGINT', zavrshitOfis)
+process.once('SIGTERM', zavrshitOfis)

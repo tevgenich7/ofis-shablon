@@ -136,6 +136,17 @@ def tg_fajl(token: str, metod: str, polya: dict, pole: str, put: Path, timeout: 
     return otchet["result"]
 
 
+def opisat_oshibku_telegrama(e: Exception) -> str:
+    """Короткая причина для журнала; пропуск и текст запроса сюда не попадают."""
+    if isinstance(e, urllib.error.HTTPError):
+        znachenie = {
+            401: "пропуск бота неверный",
+            409: "бот запущен дважды",
+        }.get(e.code, "Telegram отклонил запрос")
+        return f"HTTP {e.code}: {znachenie}"
+    return type(e).__name__
+
+
 def skachat(token: str, file_id: str, kuda: Path) -> Path:
     info = tg(token, "getFile", {"file_id": file_id})
     url = f"https://api.telegram.org/file/bot{token}/{info['file_path']}"
@@ -214,8 +225,7 @@ def sprosit_ofis(vid: str, bin_: str, tekst: str, sessiya: str | None) -> tuple[
         return d.get("result") or "(офис ответил пусто)", d.get("session_id") or sessiya
 
     # codex: задача в stdin, события JSONL на выходе
-    # --full-auto снят в codex 0.154; --dangerously-bypass-hook-trust включает сторожей офиса без ручного /hooks
-    argv = [bin_, "exec", "--json", "--skip-git-repo-check", "--dangerously-bypass-hook-trust",
+    argv = [bin_, "exec", "--json", "--skip-git-repo-check",
             "-s", "workspace-write", "-c", 'approval_policy="never"', "-C", str(KOREN)]
     if sessiya:
         argv += ["resume", sessiya]
@@ -369,8 +379,8 @@ def glavnaya():
 
     try:
         me = tg(token, "getMe")
-    except (urllib.error.URLError, TimeoutError, OSError) as e:
-        sys.exit(f"не могу достучаться до телеграма, проверь интернет ({type(e).__name__})")
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError) as e:
+        sys.exit(f"не могу достучаться до телеграма: {opisat_oshibku_telegrama(e)}")
     except RuntimeError as e:
         sys.exit(f"телеграм не принял токен бота: {e}. Проверь строку TELEGRAM_BOT_TOKEN в .env")
     print(f"[бот] @{me.get('username')} · агент: {agent[0]} · владелица: {'задана' if vladelica else 'первый, кто напишет'}")
@@ -379,15 +389,22 @@ def glavnaya():
         return
 
     offset = None
-    for u in tg(token, "getUpdates", {"timeout": 0}):
+    while True:
+        try:
+            staroe = tg(token, "getUpdates", {"timeout": 0})
+            break
+        except (urllib.error.HTTPError, urllib.error.URLError, OSError, RuntimeError) as e:
+            print(f"[бот] Telegram: {opisat_oshibku_telegrama(e)}; повтор через 5 с")
+            time.sleep(5)
+    for u in staroe:
         offset = u["update_id"] + 1   # старое не перечитываем
     print("[бот] слушаю. Ctrl+C - остановить")
     while True:
         try:
             obnovleniya = tg(token, "getUpdates", {"timeout": 50, "offset": offset,
                                                     "allowed_updates": ["message"]}, timeout=70)
-        except (urllib.error.URLError, TimeoutError, RuntimeError) as e:
-            print(f"[бот] сеть: {e}; повтор через 5 с")
+        except (urllib.error.HTTPError, urllib.error.URLError, OSError, RuntimeError) as e:
+            print(f"[бот] Telegram: {opisat_oshibku_telegrama(e)}; повтор через 5 с")
             time.sleep(5)
             continue
         for u in obnovleniya:
