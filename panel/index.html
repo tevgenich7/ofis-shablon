@@ -40,6 +40,9 @@
 
   .lenta{flex:1;overflow-y:auto;padding:22px 22px 8px;display:flex;flex-direction:column;gap:14px}
   .soob{max-width:720px;padding:13px 16px;border-radius:var(--radius);white-space:pre-wrap;word-wrap:break-word}
+  .soob a{color:var(--akcent);text-decoration:underline;text-underline-offset:2px;word-break:break-all}
+  .soob a:hover{opacity:.8}
+  .soob.ya a{color:inherit}
   .ot-menya{align-self:flex-end;background:var(--akcent);color:#12101a;border-bottom-right-radius:5px}
   @media (prefers-color-scheme: dark){ .ot-menya{color:#12101a} }
   .ot-ofisa{align-self:flex-start;background:var(--karta);border:1px solid var(--linia);border-bottom-left-radius:5px}
@@ -200,11 +203,38 @@ let potok = null
 function ubratPrivet(){ const p = document.getElementById('privet'); if (p) p.remove() }
 function vniz(){ lenta.scrollTop = lenta.scrollHeight }
 
+// Ссылки в ответе офиса делаем кликабельными. Вызывается, КОГДА ответ дописан:
+// текст приходит кусками, и адрес может разорваться между ними.
+// Текст вставляем узлами, не через innerHTML - что бы ни пришло, оно останется текстом.
+function ozhivitSsylki(el){
+  const syroj = el.textContent
+  if (!syroj || !/https?:\/\//.test(syroj)) return
+  el.textContent = ''
+  // [подпись](адрес) и просто адрес
+  const obraz = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"')\]]+)/g
+  let konec = 0, m
+  while ((m = obraz.exec(syroj)) !== null){
+    if (m.index > konec) el.appendChild(document.createTextNode(syroj.slice(konec, m.index)))
+    let adres = m[2] || m[3]
+    let hvost = ''
+    // знаки препинания в конце - это предложение, а не часть адреса
+    while (/[.,;:!?)]$/.test(adres)){ hvost = adres.slice(-1) + hvost; adres = adres.slice(0, -1) }
+    const a = document.createElement('a')
+    a.href = adres; a.target = '_blank'; a.rel = 'noopener noreferrer'
+    a.textContent = m[1] || adres
+    el.appendChild(a)
+    if (hvost) el.appendChild(document.createTextNode(hvost))
+    konec = m.index + m[0].length
+  }
+  if (konec < syroj.length) el.appendChild(document.createTextNode(syroj.slice(konec)))
+}
+
 function dobavit(klass, text){
   ubratPrivet()
   const d = document.createElement('div')
   d.className = 'soob ' + klass
   d.textContent = text
+  if (text) ozhivitSsylki(d)
   lenta.appendChild(d); vniz(); return d
 }
 
@@ -351,7 +381,9 @@ function podklyuchitsya(){
   potok.addEventListener('rabota', (e) => pokazatRabotu(JSON.parse(e.data).chto))
   potok.addEventListener('dumayu', () => { sostoyanie.textContent = 'офис думает…' })
   potok.addEventListener('gotovo', (e) => {
-    sostoyanie.textContent = 'офис на месте'; tekushiyOtvet = null
+    sostoyanie.textContent = 'офис на месте'
+    if (tekushiyOtvet) ozhivitSsylki(tekushiyOtvet)
+    tekushiyOtvet = null
     let d = {}
     try { d = JSON.parse(e.data) || {} } catch {}
     if (!d.oshibka) return
