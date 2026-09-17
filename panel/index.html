@@ -36,6 +36,12 @@
   .shapka h1{font-size:15px;margin:0;font-weight:600}
   .shapka .sostoyanie{font-size:12.5px;color:var(--tusklo)}
   .sostoyanie-bota{font-size:12.5px;color:var(--tusklo);white-space:nowrap}
+  .zapas{display:none;align-items:center;gap:7px;font-size:12.5px;color:var(--tusklo);white-space:nowrap}
+  .zapas .polosa{width:54px;height:5px;border-radius:999px;background:var(--karta2);overflow:hidden}
+  .zapas .polosa i{display:block;height:100%;background:var(--akcent2);transition:width .3s}
+  .zapas.malo .polosa i{background:#e0a33c}
+  .zapas.konchaetsya .polosa i{background:var(--akcent)}
+  .zapas.konchaetsya{color:var(--akcent)}
   .sostoyanie-bota.rabotaet{color:var(--akcent2)}
   .sostoyanie-bota.beda-bota{color:var(--akcent)}
   .knopka-tihaya{background:var(--karta2);border:1px solid var(--linia);color:var(--tusklo);border-radius:9px;padding:6px 11px;font:inherit;font-size:12.5px;cursor:pointer}
@@ -159,6 +165,10 @@
       <div style="display:flex;align-items:center;gap:12px">
         <span class="sostoyanie" id="sostoyanie">офис на месте</span>
         <span class="sostoyanie-bota" id="sostoyanie-bota">бот проверяется…</span>
+        <span class="zapas" id="zapas" title="Запас обращений к модели на аккаунте">
+          <span class="polosa"><i id="zapas-polosa"></i></span>
+          <span id="zapas-text"></span>
+        </span>
         <button class="knopka-tihaya" id="perezapustit-bota">перезапустить бота</button>
         <button class="knopka-tihaya" id="zanovo">начать заново</button>
       </div>
@@ -489,6 +499,25 @@ function podklyuchitsya(){
     dobavit('ot-ofisa', text)
   })
   potok.addEventListener('rabota', (e) => pokazatRabotu(JSON.parse(e.data).chto))
+  // Остаток запаса приходит сам, пока офис работает - отдельно его никто не спрашивает.
+  potok.addEventListener('limity', (e) => {
+    const d = JSON.parse(e.data)
+    const ostatok = Math.max(0, Math.min(100, 100 - (d.ispolzovano ?? 0)))
+    const blok = document.getElementById('zapas')
+    document.getElementById('zapas-polosa').style.width = ostatok + '%'
+    blok.classList.toggle('malo', ostatok <= 30 && ostatok > 10)
+    blok.classList.toggle('konchaetsya', ostatok <= 10)
+    let podpis = `запас ${ostatok}%`
+    if (d.sbrosV) {
+      const cherez = Math.max(0, Math.round((d.sbrosV * 1000 - Date.now()) / 60000))
+      if (cherez > 0) {
+        podpis += cherez >= 60 ? `, обновится через ${Math.round(cherez / 60)} ч` : `, обновится через ${cherez} мин`
+      }
+    }
+    document.getElementById('zapas-text').textContent = podpis
+    blok.style.display = 'flex'
+  })
+
   potok.addEventListener('dumayu', () => { sostoyanie.textContent = 'офис думает…' })
   potok.addEventListener('gotovo', (e) => {
     sostoyanie.textContent = 'офис на месте'

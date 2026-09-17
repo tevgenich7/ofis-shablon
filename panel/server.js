@@ -29,6 +29,8 @@ let agent = null                 // { vid: 'claude' | 'codex', bin }
 const codexLaunchers = new Map()
 const razgovory = new Map()      // id -> разговор
 let vstrechaOtpravlena = false
+// Последний известный остаток лимита аккаунта: приходит от Codex во время работы.
+let limity = null
 let podnyatijBotaPodryad = 0
 let botZablokirovan = false
 let proverkaBota = null
@@ -346,6 +348,22 @@ function zapomnitOtvet(R, text) {
 function razobratCodex(R, stroka) {
   let s
   try { s = JSON.parse(stroka) } catch { return }
+  // Codex сам присылает остаток лимита в событии token_count - бесплатно, попутно с работой.
+  // Запоминаем и раздаём вкладкам; спрашивать отдельно не надо, это стоило бы запроса.
+  if (s.type === 'token_count' || s.type === 'TokenCount') {
+    const rl = s.rate_limits || s.info?.rate_limits
+    const okno = rl?.primary || rl?.secondary
+    if (okno && typeof okno.used_percent === 'number') {
+      limity = {
+        ispolzovano: Math.round(okno.used_percent),
+        minutOkna: okno.window_duration_mins || okno.window_minutes || null,
+        sbrosV: okno.resets_at || null,
+      }
+      poslatVsem('limity', limity)
+    }
+    return
+  }
+
   if (s.type === 'thread.started') { R.sessionId = s.thread_id; poslat(R, 'zhiv', { session: R.sessionId }); return }
   const it = s.item
   if (s.type === 'item.started' && it) {
@@ -731,6 +749,7 @@ const server = http.createServer(async (req, res) => {
     res.write(`event: ustanovka\ndata: ${JSON.stringify(sostoyanieUstanovki())}\n\n`)
     res.write(`event: podklyucheno\ndata: ${JSON.stringify(chtoPodklyucheno())}\n\n`)
     res.write(`event: bot\ndata: ${JSON.stringify(sostoyanieBota())}\n\n`)
+    if (limity) res.write(`event: limity\ndata: ${JSON.stringify(limity)}\n\n`)
     otmenitZakrytie()
     req.on('close', () => {
       R.podpischiki = R.podpischiki.filter((r) => r !== res)
