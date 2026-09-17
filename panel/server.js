@@ -777,6 +777,46 @@ function otdat(res, fajl) {
   })
 }
 
+// Порт мог остаться занят прошлым запуском: панель не закрывается сама, когда
+// человек просто закрывает вкладку. Тогда значок с рабочего стола молча не открывает
+// офис, и это выглядит как поломка. Освобождаем порт сами - один раз, не в цикле.
+function osvoboditPort() {
+  const r = spawnSync('lsof', ['-ti', `tcp:${PORT}`], { encoding: 'utf8' })
+  if (r.status !== 0 || !r.stdout.trim()) return false
+  const svoj = String(process.pid)
+  let ubrali = false
+  for (const stroka of r.stdout.split(/\s+/)) {
+    const pid = Number(stroka)
+    if (!Number.isInteger(pid) || String(pid) === svoj) continue
+    try { process.kill(pid, 'SIGTERM'); ubrali = true } catch {}
+  }
+  if (!ubrali) return false
+  // Даём старой панели закрыться по-хорошему, иначе убираем принудительно.
+  const konec = Date.now() + 1500
+  while (Date.now() < konec) {
+    const e = spawnSync('lsof', ['-ti', `tcp:${PORT}`], { encoding: 'utf8' })
+    if (e.status !== 0 || !e.stdout.trim()) return true
+    spawnSync('sleep', ['0.1'])
+  }
+  for (const stroka of (spawnSync('lsof', ['-ti', `tcp:${PORT}`], { encoding: 'utf8' }).stdout || '').split(/\s+/)) {
+    const pid = Number(stroka)
+    if (Number.isInteger(pid) && String(pid) !== svoj) { try { process.kill(pid, 'SIGKILL') } catch {} }
+  }
+  spawnSync('sleep', ['0.3'])
+  return true
+}
+
+server.on('error', (e) => {
+  if (e.code !== 'EADDRINUSE') throw e
+  if (osvoboditPort()) {
+    console.log('  Прошлый запуск офиса не закрылся - убрал его, открываю заново.')
+    server.listen(PORT, '127.0.0.1')
+    return
+  }
+  console.error(`\n  Не получилось открыть офис: порт ${PORT} занят чем-то ещё.\n`)
+  process.exit(1)
+})
+
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`\n  Офис открыт: http://localhost:${PORT}\n  Чтобы закрыть - просто закрой это окно.\n`)
   prismotretZaBotom()
