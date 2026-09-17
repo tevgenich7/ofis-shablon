@@ -68,7 +68,13 @@
   /* правая колонка - планёрка и готовое */
   .prav{background:var(--karta);border-left:1px solid var(--linia);padding:18px 15px;overflow-y:auto}
   .blok{margin-bottom:22px}
-  .blok h3{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--tusklo);margin:0 0 9px}
+  .blok h3{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--tusklo);margin:0 0 9px;
+    cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}
+  .blok h3:hover{color:var(--tekst)}
+  .blok h3 .strelka{font-size:9px;opacity:.55;transition:transform .15s}
+  .blok.svernut h3 .strelka{transform:rotate(-90deg)}
+  .blok.svernut > *:not(h3){display:none}
+  .blok h3 .skolko{margin-left:auto;font-size:10px;opacity:.45;font-weight:400}
   .plan-stroka{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--linia);align-items:flex-start}
   .plan-stroka:last-child{border:0}
   .fajl{display:block;font-size:13px;padding:7px 9px;border-radius:9px;color:var(--tekst);text-decoration:none;background:var(--karta2);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -168,7 +174,7 @@
   </main>
 
   <aside class="prav">
-    <div class="blok">
+    <div class="blok" id="plan-blok">
       <h3>Сегодня</h3>
       <div id="plan"><div class="pusto">Контент-план пока пустой. Скажи «собери контент-план» - и он появится.</div></div>
     </div>
@@ -293,6 +299,32 @@ document.getElementById('zanovo').onclick = async () => {
 }
 
 // ── поток от офиса ───────────────────────────────────────────────────────────
+// Свернуть-развернуть раздел в правой колонке. Закрытое остаётся закрытым
+// и после перезапуска офиса: у каждого раздела своя пометка в памяти браузера.
+function svorachivaemyj(blok, klyuch, skolko){
+  const h = blok.querySelector('h3')
+  if (!h || h.dataset.gotov) return
+  h.dataset.gotov = '1'
+  const s = document.createElement('span'); s.className = 'strelka'; s.textContent = '▼'
+  h.prepend(s)
+  if (typeof skolko === 'number' && skolko > 0){
+    const n = document.createElement('span'); n.className = 'skolko'; n.textContent = skolko
+    h.appendChild(n)
+  }
+  let zakryt = false
+  try { zakryt = localStorage.getItem('svernut:' + klyuch) === '1' } catch {}
+  if (zakryt) blok.classList.add('svernut')
+  h.onclick = () => {
+    blok.classList.toggle('svernut')
+    try { localStorage.setItem('svernut:' + klyuch, blok.classList.contains('svernut') ? '1' : '0') } catch {}
+  }
+}
+
+{
+  const pb = document.getElementById('plan-blok')
+  if (pb) svorachivaemyj(pb, 'plan')
+}
+
 function podklyuchitsya(){
   potok = new EventSource('/api/potok' + (razgovor ? '?razgovor=' + razgovor : ''))
 
@@ -354,6 +386,7 @@ function podklyuchitsya(){
     const spisok = JSON.parse(e.data)
     const blok = document.getElementById('podkl-blok')
     const gde = document.getElementById('podkl')
+    svorachivaemyj(blok, 'podkl')
     blok.style.display = ''
     gde.innerHTML = ''
     for (const p of spisok){
@@ -374,7 +407,10 @@ function podklyuchitsya(){
     for (const g of gruppy){
       if (!g.fajly.length) continue
       est = true
-      const h = document.createElement('h3'); h.textContent = g.imya; v.appendChild(h)
+      const gruppa = document.createElement('div'); gruppa.className = 'blok'
+      const h = document.createElement('h3'); h.textContent = g.imya
+      gruppa.appendChild(h); v.appendChild(gruppa)
+      svorachivaemyj(gruppa, 'vitrina:' + g.papka, g.fajly.length)
       for (const f of g.fajly){
         const adres = '/rabota/' + g.papka + '/' + encodeURIComponent(f.imya)
         const put = 'results/' + g.papka + '/' + f.imya
@@ -387,7 +423,7 @@ function podklyuchitsya(){
           const b = document.createElement('b'); b.textContent = f.imya
           const vp = document.createElement('span'); vp.className = 'v-papke'; vp.textContent = 'в папке ↗'
           vp.onclick = () => fetch('/api/pokazat?put=' + encodeURIComponent(put))
-          niz.append(b, vp); k.append(m, niz); v.appendChild(k)
+          niz.append(b, vp); k.append(m, niz); gruppa.appendChild(k)
         } else {
           const stroka = document.createElement('div'); stroka.className = 'karta'
           const niz = document.createElement('div'); niz.className = 'niz'
@@ -395,15 +431,16 @@ function podklyuchitsya(){
           a.textContent = f.imya; a.style.color = 'inherit'; a.style.textDecoration = 'none'
           const vp = document.createElement('span'); vp.className = 'v-papke'; vp.textContent = 'в папке ↗'
           vp.onclick = () => fetch('/api/pokazat?put=' + encodeURIComponent(put))
-          niz.append(a, vp); stroka.appendChild(niz); v.appendChild(stroka)
+          niz.append(a, vp); stroka.appendChild(niz); gruppa.appendChild(stroka)
         }
       }
     }
     if (!est){
+      const gruppa = document.createElement('div'); gruppa.className = 'blok'
       const h = document.createElement('h3'); h.textContent = 'Готовые работы'
       const p = document.createElement('div'); p.className = 'pusto'
       p.textContent = 'Пока пусто. Всё, что офис сделает, появится здесь.'
-      v.append(h, p)
+      gruppa.append(h, p); v.appendChild(gruppa)
     }
   })
 
