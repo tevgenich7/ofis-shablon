@@ -20,6 +20,12 @@ __pycache__/
 *.wav
 *.ogg
 
+# прежние версии файлов перед обновлением офиса
+.pered-obnovleniem/
+
+# панель: открытые разговоры - рабочее состояние, а не результат работы
+panel/razgovory.json
+
 # бот: состояние разговора и скачанные голосовые
 scripts/tg/sostoyanie.json
 inbox/golosovye/

@@ -169,6 +169,41 @@ function novyjRazgovor(imya) {
   return razgovory.get(id)
 }
 
+// Разговоры живут в памяти процесса, а панель теперь закрывается сама. Чтобы человек
+// не терял историю, складываем её на диск: без живых объектов (процесс, подписчики,
+// очередь) - только то, что имеет смысл после перезапуска.
+const FAJL_RAZGOVOROV = path.join(PANEL, 'razgovory.json')
+
+function sohranitRazgovory() {
+  try {
+    const dannye = [...razgovory.values()].map((r) => ({
+      id: r.id, imya: r.imya, sessionId: r.sessionId, istoriya: r.istoriya, sozdan: r.sozdan,
+    }))
+    fs.writeFileSync(FAJL_RAZGOVOROV, JSON.stringify(dannye), 'utf8')
+  } catch {}
+}
+
+function podnyatRazgovory() {
+  let dannye = []
+  try { dannye = JSON.parse(fs.readFileSync(FAJL_RAZGOVOROV, 'utf8')) } catch { return }
+  if (!Array.isArray(dannye)) return
+  for (const d of dannye) {
+    if (!d || !d.id) continue
+    razgovory.set(d.id, {
+      id: d.id,
+      imya: d.imya || 'Разговор',
+      sessionId: d.sessionId || null,
+      proc: null,
+      zanyat: false,
+      ochered: [],
+      poslednijOtvet: '',
+      istoriya: Array.isArray(d.istoriya) ? d.istoriya : [],
+      podpischiki: [],
+      sozdan: d.sozdan || Date.now(),
+    })
+  }
+}
+
 function spisokRazgovorov() {
   return [...razgovory.values()].map((r) => ({
     id: r.id, imya: r.imya, zanyat: r.zanyat, soobshenij: r.istoriya.length, sozdan: r.sozdan,
@@ -305,7 +340,7 @@ function tehnicheskoe(text) {
 }
 
 function zapomnitOtvet(R, text) {
-  if (text && R.istoriya[R.istoriya.length - 1]?.text !== text) R.istoriya.push({ kto: 'ofis', text })
+  if (text && R.istoriya[R.istoriya.length - 1]?.text !== text) { R.istoriya.push({ kto: 'ofis', text }); sohranitRazgovory() }
 }
 
 function razobratCodex(R, stroka) {
@@ -696,7 +731,11 @@ const server = http.createServer(async (req, res) => {
     res.write(`event: ustanovka\ndata: ${JSON.stringify(sostoyanieUstanovki())}\n\n`)
     res.write(`event: podklyucheno\ndata: ${JSON.stringify(chtoPodklyucheno())}\n\n`)
     res.write(`event: bot\ndata: ${JSON.stringify(sostoyanieBota())}\n\n`)
-    req.on('close', () => { R.podpischiki = R.podpischiki.filter((r) => r !== res) })
+    otmenitZakrytie()
+    req.on('close', () => {
+      R.podpischiki = R.podpischiki.filter((r) => r !== res)
+      mozhetPoraZakryvatsya()
+    })
     setTimeout(() => vstretit(R), 400)   // офис здоровается первым, человеку писать не нужно
     return
   }
@@ -706,7 +745,7 @@ const server = http.createServer(async (req, res) => {
     const R = razgovory.get(d.razgovor)
     if (!R) return otvetJson(res, { ok: false, pochemu: 'нет такого разговора' })
     if (d.text) {
-      R.istoriya.push({ kto: 'ya', text: d.text })
+      R.istoriya.push({ kto: 'ya', text: d.text }); sohranitRazgovory()
       // имя вкладки - первые слова первой просьбы, чтобы вкладки различались на глаз
       if (R.istoriya.filter((s) => s.kto === 'ya').length === 1 && R.imya === 'Разговор') {
         R.imya = d.text.trim().split(/\s+/).slice(0, 4).join(' ').slice(0, 40)
@@ -749,7 +788,7 @@ const server = http.createServer(async (req, res) => {
     } catch {
       return otvetJson(res, { ok: false, pochemu: 'Не удалось сохранить файл в офисе. Попробуй ещё раз.' })
     }
-    R.istoriya.push({ kto: 'ya', text: `файл: ${imya}` })
+    R.istoriya.push({ kto: 'ya', text: `файл: ${imya}` }); sohranitRazgovory()
     R.ochered.push(`Файл лежит в ${JSON.stringify('inbox/' + imya)}. Посмотри, что это, и разбери по правилам офиса: медиа в knowledge/raw, скриншот статистики передай Маркетологу в цифры, текст в сырьё. Ничего не отправляй наружу; расшифровка только после отдельного согласия владелицы.`)
     otpravitDalshe(R)
     return otvetJson(res, { ok: true })
@@ -806,6 +845,33 @@ function osvoboditPort() {
   return true
 }
 
+// Закрыли последнюю вкладку - офис ждёт немного и выключается сам, освобождая порт.
+// Пауза нужна, чтобы обычная перезагрузка страницы не гасила офис.
+const PAUZA_PERED_ZAKRYTIEM = 20 * 1000
+let tajmerZakrytiya = null
+
+function estVkladki() {
+  for (const R of razgovory.values()) if (R.podpischiki.length) return true
+  return false
+}
+
+function otmenitZakrytie() {
+  if (tajmerZakrytiya) { clearTimeout(tajmerZakrytiya); tajmerZakrytiya = null }
+}
+
+function mozhetPoraZakryvatsya() {
+  otmenitZakrytie()
+  if (estVkladki()) return
+  tajmerZakrytiya = setTimeout(() => {
+    if (estVkladki()) return
+    // Работа в разгаре - не бросаем её на полпути, ждём следующей проверки.
+    for (const R of razgovory.values()) if (R.zanyat) return mozhetPoraZakryvatsya()
+    console.log('  Офис закрыт: вкладок не осталось.')
+    zavrshitOfis()
+  }, PAUZA_PERED_ZAKRYTIEM)
+  tajmerZakrytiya.unref()
+}
+
 server.on('error', (e) => {
   if (e.code !== 'EADDRINUSE') throw e
   if (osvoboditPort()) {
@@ -816,6 +882,8 @@ server.on('error', (e) => {
   console.error(`\n  Не получилось открыть офис: порт ${PORT} занят чем-то ещё.\n`)
   process.exit(1)
 })
+
+podnyatRazgovory()
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`\n  Офис открыт: http://localhost:${PORT}\n  Чтобы закрыть - просто закрой это окно.\n`)
@@ -828,6 +896,7 @@ server.listen(PORT, '127.0.0.1', () => {
 })
 
 function zavrshitOfis() {
+  sohranitRazgovory()
   if (proverkaBota) clearInterval(proverkaBota)
   server.close(() => process.exit(0))
   setTimeout(() => process.exit(0), 2000).unref()

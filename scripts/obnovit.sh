@@ -101,7 +101,7 @@ fi
 
 # ── применяем, сохранив старое ───────────────────────────────────────────────
 SHTAMP="$(date +%Y-%m-%d-%H%M%S)"
-ZAPAS="$KOREN/karantin/do-obnovleniya-$SHTAMP"
+ZAPAS="$KOREN/.pered-obnovleniem/$SHTAMP"
 mkdir -p "$ZAPAS"
 
 # Одна упрямая строка не должна бросать офис наполовину обновлённым:
@@ -150,7 +150,7 @@ else
   soobshit "  Готово: обновлено файлов - $SDELANO"
 fi
 soobshit "  Прежние версии лежат тут, если что-то пойдёт не так:"
-soobshit "      karantin/do-obnovleniya-$SHTAMP"
+soobshit "      .pered-obnovleniem/$SHTAMP"
 soobshit ""
 soobshit "  Закрой офис и открой заново значком - обновление вступит в силу."
 soobshit ""
